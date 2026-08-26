@@ -4,3 +4,6 @@
 # Real env files with secrets, written by `make install` next to the
 # tracked *.env.example templates. Never commit these.
 /env/*.env
+
+.vscode/
+.claude/settings.local.json
