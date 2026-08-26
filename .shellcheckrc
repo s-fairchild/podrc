@@ -1,2 +1,4 @@
 external-sources=true
 source-path=SCRIPTDIR
+check-sourced=true
+

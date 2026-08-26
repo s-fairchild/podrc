@@ -14,52 +14,52 @@ source "${SCRIPT_DIR}/common.sh"
 #
 # Disables and stops both MCP services, ignoring errors if not installed.
 stop_units() {
-	log_info "stopping and disabling units (ignoring errors if not installed)"
-	systemctl --user disable --now mcp-github.service mcp-kubernetes.service 2>/dev/null || true
+    log_info "stopping and disabling units (ignoring errors if not installed)"
+    systemctl --user disable --now mcp-github.service mcp-kubernetes.service 2>/dev/null || true
 }
 
 # remove_units config_dir
 #
 # Removes the installed quadlet unit files from config_dir.
 remove_units() {
-	local config_dir="$1"
+    local config_dir="$1"
 
-	log_info "removing quadlet units from ${config_dir}"
-	rm -f "${config_dir}/mcp-github.container" "${config_dir}/mcp-kubernetes.container" "${config_dir}/mcp.network"
+    log_info "removing quadlet units from ${config_dir}"
+    rm -f "${config_dir}/mcp-github.container" "${config_dir}/mcp-kubernetes.container" "${config_dir}/mcp.network"
 }
 
 # purge_env env_dir
 #
 # Deletes env_dir entirely (secrets included).
 purge_env() {
-	local env_dir="$1"
+    local env_dir="$1"
 
-	log_info "--purge: removing env files (secrets) from ${env_dir}"
-	rm -rf "${env_dir}"
+    log_info "--purge: removing env files (secrets) from ${env_dir}"
+    rm -rf "${env_dir}"
 }
 
 main() {
-	init_logging
+    init_logging
 
-	local purge=0
-	if [[ "${1:-}" == "--purge" ]]; then
-		purge=1
-	fi
+    local purge=0
+    if [[ "${1:-}" == "--purge" ]]; then
+        purge=1
+    fi
 
-	local config_dir
-	config_dir="$(install_config_dir)"
-	local env_dir
-	env_dir="$(install_env_dir)"
+    local config_dir
+    config_dir="$(install_config_dir)"
+    local env_dir
+    env_dir="$(install_env_dir)"
 
-	stop_units
-	remove_units "${config_dir}"
+    stop_units
+    remove_units "${config_dir}"
 
-	if [[ "${purge}" -eq 1 ]]; then
-		purge_env "${env_dir}"
-	fi
+    if [[ "${purge}" -eq 1 ]]; then
+        purge_env "${env_dir}"
+    fi
 
-	log_info "systemctl --user daemon-reload"
-	systemctl --user daemon-reload
+    log_info "systemctl --user daemon-reload"
+    systemctl --user daemon-reload
 }
 
 main "$@"

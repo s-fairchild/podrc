@@ -20,20 +20,39 @@ mcp-quadlets/
 │           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
 │           ├── mcp-github.container           GitHub MCP server
 │           └── mcp-kubernetes.container       Kubernetes MCP server
-├── env/                         -> ~/.config/mcp-quadlets/*.env (copied, not mirrored 1:1)
+├── env/                         -> ~/.config/mcp-quadlets/* (copied, not mirrored 1:1)
 │   ├── mcp-github.env.example
-│   └── mcp-kubernetes.env.example
+│   ├── mcp-github-systemd.env.example
+│   ├── mcp-kubernetes.env.example
+│   ├── mcp-kubernetes-systemd.env.example
+│   └── mcp-kubernetes.toml.example
 ├── scripts/                     lint/generate/install/uninstall, called by the Makefile
 ├── test/                        bats test suite for the Makefile targets
 │   └── vendor/                  bats-core, bats-support, bats-assert (git submodules)
 └── Makefile
 ```
 
-`env/*.env.example` are templates. `make install` copies each to
-`~/.config/mcp-quadlets/<name>.env` **only if that file doesn't already
-exist**, so real secrets are never clobbered by a reinstall and never live
-under `config/` (which is a straight filesystem mirror you might otherwise
-be tempted to symlink wholesale).
+`env/*.example` are templates — env files and, where a server takes one, a
+config file (e.g. `mcp-kubernetes.toml.example`). `make install` copies
+each to `~/.config/mcp-quadlets/<name>` (dropping the `.example` suffix)
+**only if that destination doesn't already exist**, so real secrets or
+hand-edited config are never clobbered by a reinstall, and none of it
+lives under `config/` (which is a straight filesystem mirror you might
+otherwise be tempted to symlink wholesale).
+
+Files named `<name>.env.example` are referenced by `EnvironmentFile=` in
+each unit's `[Container]` section — they become environment variables
+*inside* the running container. Files named `<name>-systemd.env.example`
+are referenced by `EnvironmentFile=` in the unit's `[Service]` section
+instead — they're read by systemd itself before the container starts, and
+are used for values that need to exist outside the container (e.g. a
+podman secret name substituted into a `Secret=` line, or checked by an
+`ExecStartPre=` guard). A file like `mcp-kubernetes.toml.example` is
+neither — it isn't `EnvironmentFile=`'d in, it's bind-mounted by a
+`Volume=` line straight into the container at the path its own
+`-systemd.env` file points `--config` at. All three kinds land in the
+same `~/.config/mcp-quadlets/` directory on install, distinguished by
+name/suffix.
 
 ## Prerequisites
 
@@ -76,8 +95,13 @@ write to your real `~/.config/containers/systemd`. Only `make install` /
 ### First real install
 
 1. `make install`
-2. Fill in real values in `~/.config/mcp-quadlets/mcp-github.env` and
-   `mcp-kubernetes.env` (GitHub PAT, kubeconfig path, etc).
+2. Fill in real values in `~/.config/mcp-quadlets/mcp-github.env`,
+   `mcp-kubernetes.env`, `mcp-github-systemd.env`, and
+   `mcp-kubernetes-systemd.env` (GitHub PAT / podman secret name,
+   kubeconfig path, etc). Edit `mcp-kubernetes.toml` too if you need
+   `--config`-driven settings; clear `CONFIG` in
+   `mcp-kubernetes-systemd.env` and drop the matching `Volume=`/`--config`
+   lines in `mcp-kubernetes.container` if you don't.
 3. Resolve the `TODO(verify)` notes in both `.container` files and the
    `kubernetes-mcp-server.image` file — see "Transport caveat" below,
    this is not optional.
@@ -106,6 +130,67 @@ The image reference itself lives in the corresponding `.image` file
 (`github-mcp-server.image` / `kubernetes-mcp-server.image`); update
 `Image=` there and `Exec=` in the `.container` file to match what you
 find, then re-run `make lint`.
+
+## Configuring each server
+
+The env files under `env/` (installed to `~/.config/mcp-quadlets/`) only
+cover the settings this repo currently sets. Both servers accept more —
+consult upstream for the full list before adding new keys.
+
+### GitHub MCP server
+
+`mcp-github.container` / `github-mcp-server.image`. Upstream:
+[github/github-mcp-server](https://github.com/github/github-mcp-server)
+([README](https://github.com/github/github-mcp-server/blob/main/README.md)
+documents all flags/env vars;
+[`docs/remote-server.md`](https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md)
+covers the hosted remote variant, not relevant to this self-hosted setup).
+
+Set by `mcp-github.env.example` / `mcp-github-systemd.env.example` in this
+repo:
+- `GITHUB_PERSONAL_ACCESS_TOKEN` — auth token; here it's injected via a
+  podman secret rather than plain env (see `Secret=` in
+  `mcp-github.container` and `mcp-github-systemd.env.example`)
+- `GITHUB_TOOLSETS` — comma-separated toolsets to enable (equivalent to
+  `--toolsets`)
+- `GITHUB_READ_ONLY` — `1` disables all write tools
+
+Other upstream env vars not currently set here, add to
+`mcp-github.env.example` if needed: `GITHUB_HOST` (GitHub Enterprise
+Server / GHE Cloud hostname), `GITHUB_TOOLS` (enable individual tools
+instead of whole toolsets), `GITHUB_INSIDERS` (experimental features),
+`GITHUB_OAUTH_CALLBACK_PORT` (only relevant to the OAuth login flow, not
+the PAT flow used here).
+
+### Kubernetes MCP server
+
+`mcp-kubernetes.container` / `kubernetes-mcp-server.image`. The `.image`
+file's `Image=` is a placeholder (`TODO(verify)`) — several unrelated
+projects share this name. Upstream, assuming the intended one is
+[containers/kubernetes-mcp-server](https://github.com/containers/kubernetes-mcp-server)
+(Streamable-HTTP Kubernetes/OpenShift MCP server, matches the
+`ghcr.io/containers/kubernetes-mcp-server` registry path already in the
+`.image` file): confirm this is actually the image you're running before
+trusting the flags below.
+
+That project is flag/TOML-configured rather than env-var-driven:
+`--port` (Streamable HTTP mode on path `/mcp` — note this is **not**
+`--transport sse`, which is what `Exec=` in `mcp-kubernetes.container`
+currently assumes; recheck this as part of that file's `TODO(verify)`),
+`--kubeconfig` (path to kubeconfig — this repo instead mounts one via a
+podman secret, see `mcp-kubernetes-systemd.env.example`), `--toolsets`,
+`--read-only`, `--disable-destructive`, `--config` (TOML config file),
+`--config-dir` (drop-in TOML directory). See the repo's README for the
+complete flag/TOML reference.
+
+`--config` is wired up in this repo via `mcp-kubernetes.toml.example`
+(installed to `~/.config/mcp-quadlets/mcp-kubernetes.toml`, bind-mounted
+read-only by the `Volume=` line in `mcp-kubernetes.container` at the path
+`CONFIG` names in `mcp-kubernetes-systemd.env`). Its keys are a
+best-effort mirror of the CLI flags and carry the same `TODO(verify)` as
+everything else in this unit — confirm the real TOML schema against the
+image before relying on it, and delete the `Volume=`/`--config` lines
+plus the installed `.toml` if you don't need it.
 
 ## Ports
 

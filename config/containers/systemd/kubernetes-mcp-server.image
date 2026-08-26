@@ -14,3 +14,6 @@
 
 [Image]
 Image=ghcr.io/containers/kubernetes-mcp-server:latest
+Retry=10
+RetryDelay=30s
+TLSVerify=true

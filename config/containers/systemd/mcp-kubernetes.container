@@ -17,6 +17,18 @@
 # in-container path below, and swap the source path in Volume= for your
 # real kubeconfig -- this repo's sibling `titan` cluster kubeconfig, a
 # kubeconfig scoped to a service account, etc.
+#
+# The optional config directory (a main config.toml plus ordered
+# conf.d/*.toml drop-ins) is mounted the same way, as a whole directory:
+# the Volume= line below binds
+# $XDG_CONFIG_HOME/mcp-quadlets/etc/mcp-kubernetes-server read-only at
+# /etc/kubernetes-mcp-server in the container. `make install` populates
+# that source directory from config/mcp-quadlets/etc/mcp-kubernetes-server/
+# -- real, untracked files you edit directly in your checkout (see
+# config/mcp-quadlets/.gitignore); every install mirrors its current
+# contents, so edits there are picked up on the next `make install`. If
+# you don't need this, drop the --config/--config-dir flags and the
+# Volume= line below, and leave that source directory empty.
 
 [Unit]
 Description=Kubernetes MCP Server
@@ -24,14 +36,30 @@ After=network-online.target mcp-network.service
 Requires=mcp-network.service
 Wants=network-online.target
 
+[Service]
+EnvironmentFile=%h/.config/mcp-quadlets/mcp-kubernetes-systemd.env
+ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
+ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_TARGET}" ] || { echo "KUBECONFIG_PODMAN_SECRET_TARGET is not set" >&2; exit 1; }'
+ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
+ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_TARGET} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_TARGET} does not exist." >&2; exit 1; }'
+
 [Container]
 Image=kubernetes-mcp-server.image
 ContainerName=mcp-kubernetes
 Network=mcp.network
 PublishPort=127.0.0.1:8082:8082
-Volume=%h/.kube/config:/home/mcp/.kube/config:ro,Z
+Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,target=${KUBECONFIG_PODMAN_SECRET_TARGET},uid=65532,gid=65532,mode=0400
+Volume=%h/.config/mcp-quadlets/etc/mcp-kubernetes-server:/etc/kubernetes-mcp-server:ro,Z
 EnvironmentFile=%h/.config/mcp-quadlets/mcp-kubernetes.env
-Exec=--transport sse --port 8082
+Exec=--bind-address ${BIND_ADDRESS} \
+     --cluster-provider kubeconfig \
+     --config /etc/kubernetes-mcp-server/config.toml \
+     --config-dir /etc/kubernetes-mcp-server/conf.d \
+     --kubeconfig ${KUBECONFIG_PODMAN_SECRET_TARGET} \
+     --log-file stderr \
+     --log-level ${LOG_LEVEL} \
+     --port ${PORT} \
+     --stateless
 AutoUpdate=registry
 HealthCmd=CMD-SHELL curl -sf http://localhost:8082/healthz || exit 1
 HealthInterval=30s

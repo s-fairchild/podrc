@@ -17,35 +17,35 @@ source "${SCRIPT_DIR}/common.sh"
 # Dry-runs QUADLET_SRC_DIR through quadlet_bin, writing the generated
 # unit dump to out_dir/dryrun-output.txt.
 dryrun_generate() {
-	local quadlet_bin="$1" out_dir="$2"
+    local quadlet_bin="$1" out_dir="$2"
 
-	rm -rf "${out_dir}"
-	mkdir -p "${out_dir}"
-	QUADLET_UNIT_DIRS="${QUADLET_SRC_DIR}" "${quadlet_bin}" -dryrun -user "${out_dir}" >"${out_dir}/dryrun-output.txt"
+    rm -rf "${out_dir}"
+    mkdir -p "${out_dir}"
+    QUADLET_UNIT_DIRS="${QUADLET_SRC_DIR}" "${quadlet_bin}" -dryrun -user "${out_dir}" >"${out_dir}/dryrun-output.txt"
 }
 
 # report_generated out_dir
 #
 # Logs the dump location and every generated *.service unit found in it.
 report_generated() {
-	local out_dir="$1"
+    local out_dir="$1"
 
-	log_info "Generated unit dump: ${out_dir}/dryrun-output.txt"
-	local line
-	while IFS= read -r line; do
-		log_info "found: ${line}"
-	done < <(grep -- '---.*\.service---' "${out_dir}/dryrun-output.txt")
+    log_info "Generated unit dump: ${out_dir}/dryrun-output.txt"
+    local line
+    while IFS= read -r line; do
+        log_info "found: ${line}"
+    done < <(grep -- '---.*\.service---' "${out_dir}/dryrun-output.txt")
 }
 
 main() {
-	init_logging
+    init_logging
 
-	local quadlet_bin
-	quadlet_bin="$(resolve_quadlet_bin)"
-	local out_dir="${REPO_ROOT}/.generated"
+    local quadlet_bin
+    quadlet_bin="$(resolve_quadlet_bin)"
+    local out_dir="${REPO_ROOT}/.generated"
 
-	dryrun_generate "${quadlet_bin}" "${out_dir}"
-	report_generated "${out_dir}"
+    dryrun_generate "${quadlet_bin}" "${out_dir}"
+    report_generated "${out_dir}"
 }
 
 main "$@"

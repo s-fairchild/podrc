@@ -1,0 +1,24 @@
+# Copy to $XDG_CONFIG_HOME/mcp-quadlets/mcp-kubernetes.toml (make install
+# does this automatically if the destination doesn't already exist) and
+# adjust as needed. Mounted read-only into the container by the
+# Volume= line in mcp-kubernetes.container, at the path given by CONFIG
+# in mcp-kubernetes-systemd.env.
+#
+# TODO(verify): schema not yet confirmed against the real image's
+# --config handling -- see the TODO(verify) note atop
+# mcp-kubernetes.container. Keys below mirror the CLI flags documented in
+# mcp-kubernetes-systemd.env.example; drop any that the image doesn't
+# actually support once verified.
+#
+#   * Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#drop-in-configuration
+
+################
+### Toolsets ###
+################
+#
+# Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#toolsets
+
+# Comma-separated in the CLI flag; upstream's TOML schema may want an
+# array instead -- verify before relying on this.
+#
+toolsets = ["core", "config", "helm", "kubevirt"]

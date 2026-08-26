@@ -10,7 +10,18 @@ set -euo pipefail
 #   QUADLET_SRC_DIR - quadlet units to lint/generate/install; overridable via
 #                     env var so tests can point it at a fixture directory
 #                     instead of config/containers/systemd
-#   ENV_EXAMPLE_DIR - env-file templates copied by install.sh
+#   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
+#                     install.sh, e.g. mcp-kubernetes.env.example or
+#                     mcp-kubernetes.toml.example
+#   MCP_QUADLETS_CONFIG_DIR - config/mcp-quadlets/, a literal mirror of
+#                     $XDG_CONFIG_HOME/mcp-quadlets/ (like QUADLET_SRC_DIR
+#                     is for containers/systemd/) holding real,
+#                     git-ignored files the user edits directly in their
+#                     checkout -- e.g. etc/mcp-kubernetes-server/conf.d/
+#                     drop-in *.toml files. install.sh mirrors it in
+#                     whole on every install; see its
+#                     install_local_config(). Overridable via env var so
+#                     tests can point it at a fixture directory.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 readonly SCRIPT_DIR
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." >/dev/null 2>&1 && pwd)"
@@ -19,6 +30,8 @@ readonly REPO_ROOT
 readonly QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/config/containers/systemd}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
+# shellcheck disable=SC2034 # consumed by scripts that source this file
+readonly MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/config/mcp-quadlets}"
 
 # init_logging
 #
@@ -32,26 +45,26 @@ readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
 # init_logger itself returns 0 -- shield the call and restore the
 # caller's errexit state afterwards.
 init_logging() {
-	if ! declare -f init_logger >/dev/null 2>&1; then
-		local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
-		if [[ ! -f "${logger_entry}" ]]; then
-			echo "error: ${logger_entry} not found. Run: git submodule update --init --recursive" >&2
-			return 1
-		fi
-		# shellcheck source=../vendor/bash-logger/logging.sh
-		source "${logger_entry}"
-	fi
+    if ! declare -f init_logger >/dev/null 2>&1; then
+        local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
+        if [[ ! -f "${logger_entry}" ]]; then
+            echo "error: ${logger_entry} not found. Run: git submodule update --init --recursive" >&2
+            return 1
+        fi
+        # shellcheck source=../vendor/bash-logger/logging.sh
+        source "${logger_entry}"
+    fi
 
-	local errexit_was_set=0
-	[[ $- == *e* ]] && errexit_was_set=1
+    local errexit_was_set=0
+    [[ $- == *e* ]] && errexit_was_set=1
 
-	set +e
+    set +e
 
-	init_logger --name "$(basename "$0")"
+    init_logger --name "$(basename "$0")"
 
-	(( errexit_was_set )) && set -e
+    (( errexit_was_set )) && set -e
 
-	return 0
+    return 0
 }
 
 # resolve_quadlet_bin
@@ -59,30 +72,30 @@ init_logging() {
 # Prints the path to the local quadlet binary. Overridable via QUADLET_BIN
 # for non-standard installs.
 resolve_quadlet_bin() {
-	if [[ -n "${QUADLET_BIN:-}" ]]; then
-		echo "${QUADLET_BIN}"
-		return 0
-	fi
+    if [[ -n "${QUADLET_BIN:-}" ]]; then
+        echo "${QUADLET_BIN}"
+        return 0
+    fi
 
-	local candidate
+    local candidate
 
-	for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
-		if [[ -x "${candidate}" ]]; then
-			echo "${candidate}"
-			return 0
-		fi
-	done
+    for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
+        if [[ -x "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
 
-	log_error "quadlet binary not found (looked in /usr/libexec/podman, /usr/lib/podman)."
-	log_error "set QUADLET_BIN=/path/to/quadlet to override."
+    log_error "quadlet binary not found (looked in /usr/libexec/podman, /usr/lib/podman)."
+    log_error "set QUADLET_BIN=/path/to/quadlet to override."
 
-	return 1
+    return 1
 }
 
 install_config_dir() {
-	echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
+    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
 }
 
 install_env_dir() {
-	echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
+    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
 }

@@ -8,3 +8,6 @@
 
 [Image]
 Image=ghcr.io/github/github-mcp-server:latest
+Retry=10
+RetryDelay=30s
+TLSVerify=true

@@ -1,0 +1,40 @@
+# Copy to $XDG_CONFIG_HOME/mcp-quadlets/mcp-kubernetes.toml (make install
+# does this automatically if the destination doesn't already exist) and
+# adjust as needed. Mounted read-only into the container by the
+# Volume= line in mcp-kubernetes.container, at the path given by CONFIG
+# in mcp-kubernetes-systemd.env.
+#
+# TODO(verify): schema not yet confirmed against the real image's
+# --config handling -- see the TODO(verify) note atop
+# mcp-kubernetes.container. Keys below mirror the CLI flags documented in
+# mcp-kubernetes-systemd.env.example; drop any that the image doesn't
+# actually support once verified.
+#
+#   * Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#drop-in-configuration
+
+#######################
+### Server Settings ###
+#######################
+#
+# Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#server-settings
+
+log_level = 6
+log_file = stderr
+port = 8082
+bind_address = "0.0.0.0"
+stateless = true
+
+####################
+### TLS Settings ###
+####################
+
+# Mount these as podman secrets if used
+# tls_cert = 
+# tls_key = 
+# require_tls = true
+
+tls_min_version = 1.3
+tls_cipher_suites = [
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+]

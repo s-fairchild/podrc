@@ -1,0 +1,3 @@
+# Test fixture standing in for a real, git-ignored
+# config/mcp-quadlets/etc/mcp-kubernetes-server/config.toml.
+log_level = 6

@@ -48,12 +48,35 @@ test/vendor/bats-core/bin/bats test/install.bats -f "never overwrites"
 `$XDG_CONFIG_HOME` (usually `~/.config`) when installed. Don't add files
 here that aren't meant to be installed verbatim.
 
-**`env/*.env.example` is a separate, non-mirrored path.** `make install`
-copies each template to `~/.config/mcp-quadlets/<name>.env` *only if that
-destination doesn't already exist*, so a reinstall never clobbers a
-filled-in secret. This is why env templates live outside `config/` instead
-of being mirrored — a mirror would tempt clobbering real secrets on
-reinstall.
+**`env/*.example` is a separate, non-mirrored path** — despite the
+directory's name, it holds both env-file and config-file templates (e.g.
+`mcp-kubernetes.toml.example` alongside the `*.env.example` files).
+`make install` copies each to `~/.config/mcp-quadlets/<name>` (stripping
+only the `.example` suffix) *only if that destination doesn't already
+exist*, so a reinstall never clobbers a filled-in secret or hand-edited
+config. This is why these templates live outside `config/` instead of
+being mirrored — a mirror would tempt clobbering real values on reinstall.
+
+**The `-systemd.env` / `-systemd.env.example` suffix marks the `[Service]`
+side of that split.** A plain `<name>.env(.example)` is referenced by
+`EnvironmentFile=` in a unit's `[Container]` section — those values become
+environment variables inside the running container. A
+`<name>-systemd.env(.example)` is referenced by `EnvironmentFile=` in the
+same unit's `[Service]` section instead — read by systemd itself, not
+passed into the container — for values a unit needs outside the container,
+e.g. a podman secret name interpolated into a `Secret=` line in
+`[Container]`, or a value checked by an `ExecStartPre=` guard. All of
+these files still land in the same `~/.config/mcp-quadlets/` directory on
+install; only the suffix distinguishes which unit section reads them.
+
+**A non-`.env` template (e.g. `mcp-kubernetes.toml.example`) is neither of
+those** — it's not `EnvironmentFile=`'d in at all. It's bind-mounted
+straight into the container by a `Volume=` line in the `.container` unit,
+at the in-container path its sibling `-systemd.env` file points the
+relevant flag (e.g. `CONFIG` → `--config`) at. `install_env_templates()`
+in `scripts/install.sh` globs `*.example` generically (not `*.env.example`)
+specifically so this kind of file gets picked up too — keep that in mind
+if adding a new template that isn't a `.env` file.
 
 **`scripts/common.sh`** is sourced (not executed) by every other script in
 `scripts/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
@@ -111,6 +134,11 @@ which of several same-named community images to use, must be verified
 against the real image's `--help` output before this is
 production-usable. See README.md "Transport caveat" before changing
 `Image=` (in the `.image` file) or `Exec=` (in the `.container` file).
+README.md "Configuring each server" links each image's upstream repo and
+lists which of its env vars/flags this repo currently sets vs. leaves at
+defaults — check it before adding new keys to `env/*.env.example`, and
+note it already flags that the Kubernetes server's real flag is `--port`
+(Streamable HTTP), not the `--transport sse` currently in `Exec=`.
 
 ## Conventions
 
