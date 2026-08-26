@@ -1,0 +1,11 @@
+# Shared podman network for MCP server containers.
+#
+# Installed to $XDG_CONFIG_HOME/containers/systemd/mcp.network
+# Quadlet generates mcp-network.service from this file; the .container
+# units below depend on it via Network=mcp.network.
+
+[Unit]
+Description=Shared network for MCP servers
+
+[Network]
+NetworkName=mcp

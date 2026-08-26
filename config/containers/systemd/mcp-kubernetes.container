@@ -1,0 +1,45 @@
+# Kubernetes MCP server, run as a rootless podman user service.
+#
+# Installed to $XDG_CONFIG_HOME/containers/systemd/mcp-kubernetes.container
+# Quadlet generates mcp-kubernetes.service from this file.
+#
+# TODO(verify): Image= is a placeholder. Several "kubernetes-mcp-server"
+# projects exist with different registries/images and flags; pick the
+# one you intend to run and update Image= and Exec= to match its actual
+# CLI (`--help` output), including its HTTP/SSE transport flag for
+# persistent operation as a systemd service (see mcp-github.container's
+# TODO and README.md "Transport caveat" for why stdio-only images don't
+# fit this deployment model).
+#
+# The container needs read access to a kubeconfig for whichever cluster
+# it should manage. Point KUBECONFIG (in mcp-kubernetes.env) at the
+# in-container path below, and swap the source path in Volume= for your
+# real kubeconfig -- this repo's sibling `titan` cluster kubeconfig, a
+# kubeconfig scoped to a service account, etc.
+
+[Unit]
+Description=Kubernetes MCP Server
+After=network-online.target mcp-network.service
+Requires=mcp-network.service
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/TODO-CHOOSE-IMAGE/kubernetes-mcp-server:latest
+ContainerName=mcp-kubernetes
+Network=mcp.network
+PublishPort=127.0.0.1:8082:8082
+Volume=%h/.kube/config:/home/mcp/.kube/config:ro,Z
+EnvironmentFile=%h/.config/mcp-quadlets/mcp-kubernetes.env
+Exec=--transport sse --port 8082
+AutoUpdate=registry
+HealthCmd=CMD-SHELL curl -sf http://localhost:8082/healthz || exit 1
+HealthInterval=30s
+HealthRetries=3
+
+[Service]
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+
+[Install]
+WantedBy=default.target
