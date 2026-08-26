@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 BATS := test/vendor/bats-core/bin/bats
+BASH_LOGGER := vendor/bash-logger/logging.sh
 
 .PHONY: help
 help: ## Show this help
@@ -8,23 +9,23 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 .PHONY: lint
-lint: ## Validate quadlet syntax (dry-run) and shellcheck the scripts
+lint: submodules ## Validate quadlet syntax (dry-run) and shellcheck the scripts
 	@scripts/lint.sh
 
 .PHONY: generate
-generate: ## Materialize the systemd units quadlet would generate, into .generated/
+generate: submodules ## Materialize the systemd units quadlet would generate, into .generated/
 	@scripts/generate.sh
 
 .PHONY: install
-install: lint ## Install quadlet units + env templates for the current user, enable services
+install: submodules lint ## Install quadlet units + env templates for the current user, enable services
 	@scripts/install.sh
 
 .PHONY: uninstall
-uninstall: ## Stop, disable, and remove the installed quadlet units (keeps env secrets)
+uninstall: submodules ## Stop, disable, and remove the installed quadlet units (keeps env secrets)
 	@scripts/uninstall.sh
 
 .PHONY: uninstall-purge
-uninstall-purge: ## Like uninstall, but also deletes env files (secrets)
+uninstall-purge: submodules ## Like uninstall, but also deletes env files (secrets)
 	@scripts/uninstall.sh --purge
 
 .PHONY: test
@@ -32,8 +33,8 @@ test: submodules ## Run the bats test suite against the make targets
 	@$(BATS) test/*.bats
 
 .PHONY: submodules
-submodules: ## Fetch vendored test dependencies (bats-core and helpers)
-	@if [ ! -x "$(BATS)" ]; then \
+submodules: ## Fetch vendored dependencies (bats-core/helpers, bash-logger)
+	@if [ ! -x "$(BATS)" ] || [ ! -f "$(BASH_LOGGER)" ]; then \
 		git submodule update --init --recursive; \
 	fi
 
