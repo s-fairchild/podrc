@@ -15,9 +15,11 @@ mcp-quadlets/
 ├── config/
 │   └── containers/
 │       └── systemd/            -> ~/.config/containers/systemd/
-│           ├── mcp.network             shared podman network
-│           ├── mcp-github.container    GitHub MCP server
-│           └── mcp-kubernetes.container Kubernetes MCP server
+│           ├── mcp.network                    shared podman network
+│           ├── github-mcp-server.image        GitHub MCP server image pull
+│           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
+│           ├── mcp-github.container           GitHub MCP server
+│           └── mcp-kubernetes.container       Kubernetes MCP server
 ├── env/                         -> ~/.config/mcp-quadlets/*.env (copied, not mirrored 1:1)
 │   ├── mcp-github.env.example
 │   └── mcp-kubernetes.env.example
@@ -76,8 +78,9 @@ write to your real `~/.config/containers/systemd`. Only `make install` /
 1. `make install`
 2. Fill in real values in `~/.config/mcp-quadlets/mcp-github.env` and
    `mcp-kubernetes.env` (GitHub PAT, kubeconfig path, etc).
-3. Resolve the `TODO(verify)` notes in both `.container` files — see
-   "Transport caveat" below, this is not optional.
+3. Resolve the `TODO(verify)` notes in both `.container` files and the
+   `kubernetes-mcp-server.image` file — see "Transport caveat" below,
+   this is not optional.
 4. `systemctl --user start mcp-github.service mcp-kubernetes.service`
 5. `loginctl enable-linger "$USER"` if you want these to keep running
    after you log out / restart without logging back in. This changes
@@ -99,8 +102,10 @@ flag exists on the image in use, and both are marked `TODO(verify)`
 because the exact flag/env var (and, for the Kubernetes server, which of
 several same-named community images to run) depends on the specific
 image version — check `podman run --rm <image> --help` before deploying.
-Update `Image=` and `Exec=` in the relevant `.container` file to match
-what you find, then re-run `make lint`.
+The image reference itself lives in the corresponding `.image` file
+(`github-mcp-server.image` / `kubernetes-mcp-server.image`); update
+`Image=` there and `Exec=` in the `.container` file to match what you
+find, then re-run `make lint`.
 
 ## Ports
 

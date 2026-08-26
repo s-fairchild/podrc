@@ -3,10 +3,11 @@
 # Installed to $XDG_CONFIG_HOME/containers/systemd/mcp-kubernetes.container
 # Quadlet generates mcp-kubernetes.service from this file.
 #
-# TODO(verify): Image= is a placeholder. Several "kubernetes-mcp-server"
-# projects exist with different registries/images and flags; pick the
-# one you intend to run and update Image= and Exec= to match its actual
-# CLI (`--help` output), including its HTTP/SSE transport flag for
+# TODO(verify): the image pulled by kubernetes-mcp-server.image is a
+# placeholder. Several "kubernetes-mcp-server" projects exist with
+# different registries/images and flags; pick the one you intend to run
+# and update Image= in that .image file and Exec= below to match its
+# actual CLI (`--help` output), including its HTTP/SSE transport flag for
 # persistent operation as a systemd service (see mcp-github.container's
 # TODO and README.md "Transport caveat" for why stdio-only images don't
 # fit this deployment model).
@@ -24,7 +25,7 @@ Requires=mcp-network.service
 Wants=network-online.target
 
 [Container]
-Image=ghcr.io/TODO-CHOOSE-IMAGE/kubernetes-mcp-server:latest
+Image=kubernetes-mcp-server.image
 ContainerName=mcp-kubernetes
 Network=mcp.network
 PublishPort=127.0.0.1:8082:8082

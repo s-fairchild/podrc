@@ -15,7 +15,7 @@ teardown() {
 	dump="${REPO_ROOT}/.generated/dryrun-output.txt"
 	[ -f "${dump}" ]
 	run grep -c -- '---.*\.service---' "${dump}"
-	assert_output "3"
+	assert_output "5"
 }
 
 @test "generate: includes ExecStart for the github and kubernetes containers" {

@@ -92,15 +92,25 @@ not vendored copies — `make test`/`make submodules` runs
 `git submodule update --init --recursive` automatically if
 `test/vendor/bats-core/bin/bats` isn't executable yet.
 
-**The two `.container` units are intentionally incomplete** (`TODO(verify)`
-comments in each): MCP servers are normally spawned per-connection over
-stdio, which doesn't fit a long-lived systemd unit. These units assume the
-container image supports a persistent SSE/HTTP transport flag instead
-(`--transport sse --port <N>`), but the exact flag and — for the Kubernetes
-server specifically — which of several same-named community images to use,
-must be verified against the real image's `--help` output before this is
+**Each `.container` unit's `Image=` points at a sibling `.image` unit**
+(`github-mcp-server.image`, `kubernetes-mcp-server.image`), not a bare
+registry reference — Quadlet resolves the `.image` suffix to that unit,
+generates `<name>-image.service` to pull it, and auto-adds the
+`Requires=`/`After=` dependency on the `.container`'s generated service.
+The actual `podman pull`-equivalent image reference lives in the
+`[Image]` section of the `.image` file, so change it there, not in the
+`.container` file.
+
+**The two `.container` units (and `kubernetes-mcp-server.image`) are
+intentionally incomplete** (`TODO(verify)` comments in each): MCP servers
+are normally spawned per-connection over stdio, which doesn't fit a
+long-lived systemd unit. These units assume the container image supports
+a persistent SSE/HTTP transport flag instead (`--transport sse --port
+<N>`), but the exact flag and — for the Kubernetes server specifically —
+which of several same-named community images to use, must be verified
+against the real image's `--help` output before this is
 production-usable. See README.md "Transport caveat" before changing
-`Image=`/`Exec=` in either file.
+`Image=` (in the `.image` file) or `Exec=` (in the `.container` file).
 
 ## Conventions
 
