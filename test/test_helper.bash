@@ -4,6 +4,8 @@
 load 'vendor/bats-support/load'
 load 'vendor/bats-assert/load'
 
+declare REPO_ROOT FIXTURES_DIR
+# shellcheck disable=SC2034
 REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
 FIXTURES_DIR="${BATS_TEST_DIRNAME}/fixtures"
 
