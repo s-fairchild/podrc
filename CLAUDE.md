@@ -26,10 +26,10 @@ make generate         # materialize the systemd units quadlet would produce into
                        # .generated/dryrun-output-<commit>[-dirty].txt, for
                        # inspecting ExecStart
 make install          # lint, then copy units to ~/.config/containers/systemd,
-                       # write env templates to ~/.config/mcp-quadlets, daemon-reload
+                       # write env templates to ~/.config/mcpod, daemon-reload
                        # (quadlet auto-enables via each unit's own [Install])
 make install-local    # install home/bin/* to ~/.local/bin (0744) and home/lib/*
-                       # to ~/.local/lib/mcp-quadlets (0644) -- not systemd-managed,
+                       # to ~/.local/lib/mcpod (0644) -- not systemd-managed,
                        # so this is separate from `make install`
 make uninstall        # stop, disable, remove installed units; env secrets kept
 make uninstall-purge  # uninstall, and also delete the env files
@@ -55,7 +55,7 @@ test/vendor/bats-core/bin/bats test/install.bats -f "never overwrites"
 **`home/` holds everything that ends up under the user's `$HOME`; `hack/`
 never does.** `home/` mirrors destination roots the same way `config/` used
 to at repo root: `home/config/` → `$XDG_CONFIG_HOME` (usually `~/.config`),
-`home/bin/` → `~/.local/bin`, `home/lib/` → `~/.local/lib/mcp-quadlets`.
+`home/bin/` → `~/.local/bin`, `home/lib/` → `~/.local/lib/mcpod`.
 Everything under one of those three lands at the identical relative path
 under its destination when installed — don't add files there that aren't
 meant to be installed verbatim. `hack/` is the opposite: the lint/generate/
@@ -67,14 +67,14 @@ executable entry points (installed mode `0744` by `make install-local`) —
 currently just `mcp-github-stdio.sh`. `home/lib/*` (currently empty, kept
 via `.gitkeep`) is for library code a `home/bin/` script sources rather
 than runs — installed mode `0644` (never executable) to
-`~/.local/lib/mcp-quadlets`, one level below a plain `~/.local/lib/<file>`
+`~/.local/lib/mcpod`, one level below a plain `~/.local/lib/<file>`
 specifically to avoid colliding with other tools' files there. Neither is
 `hack/common.sh`: that's dev-harness-only and never installed at all.
 
 **`env/*.example` is a separate, non-mirrored path** — despite the
 directory's name, it holds both env-file and config-file templates (e.g.
 `mcp-kubernetes.toml.example` alongside the `*.env.example` files).
-`make install` copies each to `~/.config/mcp-quadlets/<name>` (stripping
+`make install` copies each to `~/.config/mcpod/<name>` (stripping
 only the `.example` suffix) *only if that destination doesn't already
 exist*, so a reinstall never clobbers a filled-in secret or hand-edited
 config. This is why these templates live outside `home/config/` instead of
@@ -89,7 +89,7 @@ same unit's `[Service]` section instead — read by systemd itself, not
 passed into the container — for values a unit needs outside the container,
 e.g. a podman secret name interpolated into a `Secret=` line in
 `[Container]`, or a value checked by an `ExecStartPre=` guard. All of
-these files still land in the same `~/.config/mcp-quadlets/` directory on
+these files still land in the same `~/.config/mcpod/` directory on
 install; only the suffix distinguishes which unit section reads them.
 
 **A non-`.env` template (e.g. `mcp-kubernetes.toml.example`) is neither of
@@ -104,7 +104,7 @@ if adding a new template that isn't a `.env` file.
 **`hack/common.sh`** is sourced (not executed) by every other script in
 `hack/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
 `QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`,
-`MCP_QUADLETS_CONFIG_DIR`, `HOME_BIN_SRC_DIR`, `HOME_LIB_SRC_DIR`, and the
+`MCPOD_CONFIG_DIR`, `HOME_BIN_SRC_DIR`, `HOME_LIB_SRC_DIR`, and the
 functions `init_logging()`, `resolve_quadlet_bin()`, `install_config_dir()`,
 `install_env_dir()`, `install_bin_dir()`, `install_lib_dir()`, plus a set of
 quadlet-unit-introspection helpers that derive service/container/network
@@ -139,7 +139,7 @@ this purpose) and dry-run into a throwaway/`.generated` dir. Only
 `install.sh` and `uninstall.sh` write to real paths, and only under
 `$XDG_CONFIG_HOME` — never as root, never outside the user's own config.
 `install-local.sh` writes to `~/.local/bin` and
-`~/.local/lib/mcp-quadlets` — also never as root.
+`~/.local/lib/mcpod` — also never as root.
 
 **Test isolation (`test/test_helper.bash`)**: `setup_sandbox` redirects
 `HOME`/`XDG_CONFIG_HOME` into a `mktemp -d` sandbox and prepends
@@ -188,7 +188,7 @@ upstream — no self-hosted HTTP/SSE mode exists; GitHub's own hosted
 `api.githubcopilot.com` endpoint is unrelated). `home/bin/mcp-github-stdio.sh`
 is what actually runs it: an MCP client's stdio "command" points at that
 script directly, which resolves the installed env files under
-`~/.config/mcp-quadlets/` and `exec`s `podman run -i --rm ...
+`~/.config/mcpod/` and `exec`s `podman run -i --rm ...
 ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
 per connection. See README.md "Transport caveat" for the full rationale
 and why `mcp-github.container` was removed rather than kept

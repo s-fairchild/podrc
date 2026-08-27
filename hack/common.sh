@@ -16,8 +16,8 @@ set -euo pipefail
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, e.g. mcp-kubernetes.env.example or
 #                     mcp-kubernetes.toml.example
-#   MCP_QUADLETS_CONFIG_DIR - home/config/mcp-quadlets/, a literal mirror of
-#                     $XDG_CONFIG_HOME/mcp-quadlets/ (like QUADLET_SRC_DIR
+#   MCPOD_CONFIG_DIR - home/config/mcpod/, a literal mirror of
+#                     $XDG_CONFIG_HOME/mcpod/ (like QUADLET_SRC_DIR
 #                     is for containers/systemd/) holding real,
 #                     git-ignored files the user edits directly in their
 #                     checkout -- e.g. etc/mcp-kubernetes-server/conf.d/
@@ -30,7 +30,7 @@ set -euo pipefail
 #                     env var so tests can point it at a fixture directory.
 #   HOME_LIB_SRC_DIR - home/lib/, library files (sourced by home/bin/
 #                     scripts, never executed directly) install-local.sh
-#                     copies into ~/.local/lib/mcp-quadlets (mode 0644).
+#                     copies into ~/.local/lib/mcpod (mode 0644).
 #                     Overridable via env var so tests can point it at a
 #                     fixture directory.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -53,9 +53,9 @@ readonly QUADLET_UNIT_SUFFIXES=(
 )
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
-MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/home/config/mcp-quadlets}"
+MCPOD_CONFIG_DIR="${MCPOD_CONFIG_DIR:-${REPO_ROOT}/home/config/mcpod}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
-readonly MCP_QUADLETS_CONFIG_DIR
+readonly MCPOD_CONFIG_DIR
 HOME_BIN_SRC_DIR="${HOME_BIN_SRC_DIR:-${REPO_ROOT}/home/bin}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_BIN_SRC_DIR
@@ -130,7 +130,7 @@ install_config_dir() {
 }
 
 install_env_dir() {
-  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
 }
 
 install_bin_dir() {
@@ -138,7 +138,7 @@ install_bin_dir() {
 }
 
 install_lib_dir() {
-  echo "${HOME}/.local/lib/mcp-quadlets"
+  echo "${HOME}/.local/lib/mcpod"
 }
 
 # list_quadlet_units

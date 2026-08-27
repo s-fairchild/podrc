@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-readonly ENV_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
+readonly ENV_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
 readonly CONTAINER_ENV_FILE="${ENV_DIR}/mcp-github.env"
 readonly SYSTEMD_ENV_FILE="${ENV_DIR}/mcp-github-systemd.env"
 

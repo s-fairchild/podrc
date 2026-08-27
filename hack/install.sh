@@ -58,9 +58,9 @@ install_env_templates() {
 
 # install_local_config env_dir
 #
-# Mirrors MCP_QUADLETS_CONFIG_DIR (home/config/mcp-quadlets/) into env_dir,
+# Mirrors MCPOD_CONFIG_DIR (home/config/mcpod/) into env_dir,
 # preserving its directory layout -- e.g.
-# home/config/mcp-quadlets/etc/mcp-kubernetes-server/{config.toml,conf.d/*.toml}
+# home/config/mcpod/etc/mcp-kubernetes-server/{config.toml,conf.d/*.toml}
 # lands at env_dir/etc/mcp-kubernetes-server/. Unlike
 # install_env_templates, this always overwrites: these aren't one-shot
 # templates, they're the user's real, git-ignored files, edited directly
@@ -69,25 +69,25 @@ install_env_templates() {
 install_local_config() {
   local env_dir="$1"
 
-  [[ -d "${MCP_QUADLETS_CONFIG_DIR}" ]] || return 0
+  [[ -d "${MCPOD_CONFIG_DIR}" ]] || return 0
 
-  local msg="installing local config overlay from home/config/mcp-quadlets "
+  local msg="installing local config overlay from home/config/mcpod "
   msg+="to ${env_dir}"
   log_info "${msg}"
 
   local path rel dest
   while IFS= read -r -d '' path; do
-    rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
+    rel="${path#"${MCPOD_CONFIG_DIR}"}"
     mkdir -p "${env_dir}${rel}"
-  done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type d -print0)
+  done < <(find "${MCPOD_CONFIG_DIR}" -type d -print0)
 
   while IFS= read -r -d '' path; do
     [[ "$(basename "${path}")" == .gitignore ]] && continue
-    rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
+    rel="${path#"${MCPOD_CONFIG_DIR}"}"
     dest="${env_dir}${rel}"
     install -m 0600 "${path}" "${dest}"
     log_info "wrote ${dest}"
-  done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type f -print0)
+  done < <(find "${MCPOD_CONFIG_DIR}" -type f -print0)
 }
 
 # register_units
@@ -123,7 +123,7 @@ print_next_steps() {
 Next steps:
   1. Edit ${env_dir}/*.env with real credentials.
   2. Drop your kubernetes-mcp-server config.toml and conf.d/*.toml files
-     into home/config/mcp-quadlets/etc/mcp-kubernetes-server/ (git-ignored)
+     into home/config/mcpod/etc/mcp-kubernetes-server/ (git-ignored)
      and re-run this install to sync them to
      ${env_dir}/etc/mcp-kubernetes-server/.
   3. Resolve the TODO(verify) notes in ${config_dir}/mcp-kubernetes.container
@@ -132,7 +132,7 @@ Next steps:
   5. So these keep running after you log out, and start again on boot:
      loginctl enable-linger "\$USER"
   6. Run 'make install-local' to install home/bin/*, home/lib/* to
-     ~/.local/bin, ~/.local/lib/mcp-quadlets -- separate from this target
+     ~/.local/bin, ~/.local/lib/mcpod -- separate from this target
      since those aren't systemd-managed.
 EOF
 }

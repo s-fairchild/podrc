@@ -24,25 +24,25 @@ teardown() {
 	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env" ]
-	run grep -q 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env"
+	[ -f "${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env" ]
+	run grep -q 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env"
 	assert_success
 }
 
-@test "install: mirrors home/config/mcp-quadlets local config overlay into XDG_CONFIG_HOME/mcp-quadlets" {
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/hack/install.sh"
+@test "install: mirrors home/config/mcpod local config overlay into XDG_CONFIG_HOME/mcpod" {
+	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/etc/mcp-kubernetes-server/config.toml" ]
-	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/etc/mcp-kubernetes-server/conf.d/00-test.toml" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/config.toml" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/conf.d/00-test.toml" ]
 }
 
 @test "install: local config overlay always overwrites (not a one-shot template)" {
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" "${REPO_ROOT}/hack/install.sh"
-	dest="${XDG_CONFIG_HOME}/mcp-quadlets/etc/mcp-kubernetes-server/config.toml"
+	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" "${REPO_ROOT}/hack/install.sh"
+	dest="${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/config.toml"
 	echo "log_level = 1" >"${dest}"
 
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/hack/install.sh"
+	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	run grep -q "log_level = 6" "${dest}"
@@ -51,7 +51,7 @@ teardown() {
 
 @test "install: never overwrites an existing env file" {
 	"${REPO_ROOT}/hack/install.sh"
-	env_file="${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env"
+	env_file="${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env"
 	echo 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="real-secret-name"' >"${env_file}"
 
 	run "${REPO_ROOT}/hack/install.sh"

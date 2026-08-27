@@ -15,7 +15,7 @@ teardown() {
 	assert_success
 
 	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/mcp-kubernetes.container" ]
-	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github.env" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/mcp-github.env" ]
 }
 
 @test "uninstall: disables units through systemctl --user" {
@@ -30,7 +30,7 @@ teardown() {
 	run "${REPO_ROOT}/hack/uninstall.sh" --purge
 	assert_success
 
-	[ ! -e "${XDG_CONFIG_HOME}/mcp-quadlets" ]
+	[ ! -e "${XDG_CONFIG_HOME}/mcpod" ]
 }
 
 @test "make uninstall: works via the Makefile target" {
