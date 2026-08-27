@@ -18,7 +18,8 @@ git submodule update --init --recursive   # or: make submodules — required onc
 make lint             # shellcheck scripts/*.sh + dry-run every quadlet unit through
                        # the local `quadlet` binary (no real systemd paths touched)
 make generate         # materialize the systemd units quadlet would produce into
-                       # .generated/dryrun-output.txt, for inspecting ExecStart
+                       # .generated/dryrun-output-<commit>[-dirty].txt, for
+                       # inspecting ExecStart
 make install          # lint, then copy units to ~/.config/containers/systemd,
                        # write env templates to ~/.config/mcp-quadlets, daemon-reload,
                        # enable (not start) both services
@@ -80,9 +81,21 @@ if adding a new template that isn't a `.env` file.
 
 **`scripts/common.sh`** is sourced (not executed) by every other script in
 `scripts/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
-`QUADLET_SRC_DIR`, `ENV_EXAMPLE_DIR`, and the functions `init_logging()`,
-`resolve_quadlet_bin()`, `install_config_dir()`, `install_env_dir()`. New
-scripts should source it the same way rather than recomputing these paths.
+`QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`, and the
+functions `init_logging()`, `resolve_quadlet_bin()`, `install_config_dir()`,
+`install_env_dir()`, plus a set of quadlet-unit-introspection helpers that
+derive service/container/network names from the unit files themselves
+instead of hardcoding them: `list_quadlet_units()` (every unit file
+matching `QUADLET_UNIT_SUFFIXES` in `QUADLET_SRC_DIR`),
+`container_service_names()` (the `<name>.service` Quadlet generates per
+`*.container` unit), `quadlet_container_names()`/`quadlet_network_names()`
+(the podman container/network name Quadlet creates per `*.container`/
+`*.network` unit -- its `ContainerName=`/`NetworkName=` value if set,
+else the unit's own basename), and the `quadlet_unit_value()` /
+`resolve_unit_specifiers()` helpers those two use to read a unit's
+`key=value` lines and expand the `%N` systemd specifier. New scripts
+should source `common.sh` the same way rather than recomputing any of
+this.
 
 **`vendor/bash-logger`** (git submodule, `git@github.com:s-fairchild/bash-logger.git`)
 provides the `log_debug`/`log_info`/`log_warn`/`log_error`/... functions
@@ -143,8 +156,10 @@ note it already flags that the Kubernetes server's real flag is `--port`
 ## Conventions
 
 - Shell scripts: `set -euo pipefail`, resolve `SCRIPT_DIR`/`REPO_ROOT` via
-  `BASH_SOURCE`, tabs for indentation (matches existing scripts and the
-  Makefile).
+  `BASH_SOURCE`, 2-space indentation per Google's Shell Style Guide
+  (https://google.github.io/styleguide/shellguide.html) -- the Makefile
+  itself still requires literal tabs for recipe lines, but that's a `make`
+  syntax requirement, not a `scripts/*.sh` convention.
 - Every directly-run script (`scripts/*.sh`) puts its logic in functions and
   calls a `main "$@"` at the bottom; `scripts/common.sh` is a library (only
   sourced) and has no `main`.

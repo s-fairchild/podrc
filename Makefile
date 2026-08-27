@@ -25,7 +25,7 @@ uninstall: submodules ## Stop, disable, and remove the installed quadlet units (
 	@scripts/uninstall.sh
 
 .PHONY: uninstall-purge
-uninstall-purge: submodules ## Like uninstall, but also deletes env files (secrets)
+uninstall-purge: submodules ## Like uninstall, but also deletes env files (secrets) and this repo's podman containers/networks
 	@scripts/uninstall.sh --purge
 
 .PHONY: test

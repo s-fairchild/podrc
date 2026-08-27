@@ -10,6 +10,9 @@ set -euo pipefail
 #   QUADLET_SRC_DIR - quadlet units to lint/generate/install; overridable via
 #                     env var so tests can point it at a fixture directory
 #                     instead of config/containers/systemd
+#   QUADLET_UNIT_SUFFIXES - quadlet unit file extensions this repo installs/
+#                     removes/inspects, e.g. mcp-github.container or
+#                     mcp.network
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, e.g. mcp-kubernetes.env.example or
 #                     mcp-kubernetes.toml.example
@@ -26,12 +29,25 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 readonly SCRIPT_DIR
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." >/dev/null 2>&1 && pwd)"
 readonly REPO_ROOT
+QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/config/containers/systemd}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
-readonly QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/config/containers/systemd}"
+readonly QUADLET_SRC_DIR
+# shellcheck disable=SC2034 # consumed by scripts that source this file
+readonly QUADLET_UNIT_SUFFIXES=(
+  container
+  volume
+  network
+  kube
+  image
+  build
+  pod
+  artifact
+)
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
+MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/config/mcp-quadlets}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
-readonly MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/config/mcp-quadlets}"
+readonly MCP_QUADLETS_CONFIG_DIR
 
 # init_logging
 #
@@ -45,26 +61,28 @@ readonly MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/config
 # init_logger itself returns 0 -- shield the call and restore the
 # caller's errexit state afterwards.
 init_logging() {
-    if ! declare -f init_logger >/dev/null 2>&1; then
-        local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
-        if [[ ! -f "${logger_entry}" ]]; then
-            echo "error: ${logger_entry} not found. Run: git submodule update --init --recursive" >&2
-            return 1
-        fi
-        # shellcheck source=../vendor/bash-logger/logging.sh
-        source "${logger_entry}"
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
+    if [[ ! -f "${logger_entry}" ]]; then
+      local msg="error: ${logger_entry} not found. "
+      msg+="Run: git submodule update --init --recursive"
+      echo "${msg}" >&2
+      return 1
     fi
+    # shellcheck source=../vendor/bash-logger/logging.sh
+    source "${logger_entry}"
+  fi
 
-    local errexit_was_set=0
-    [[ $- == *e* ]] && errexit_was_set=1
+  local errexit_was_set=0
+  [[ $- == *e* ]] && errexit_was_set=1
 
-    set +e
+  set +e
 
-    init_logger --name "$(basename "$0")"
+  init_logger --name "$(basename "$0")"
 
-    (( errexit_was_set )) && set -e
+  (( errexit_was_set )) && set -e
 
-    return 0
+  return 0
 }
 
 # resolve_quadlet_bin
@@ -72,30 +90,129 @@ init_logging() {
 # Prints the path to the local quadlet binary. Overridable via QUADLET_BIN
 # for non-standard installs.
 resolve_quadlet_bin() {
-    if [[ -n "${QUADLET_BIN:-}" ]]; then
-        echo "${QUADLET_BIN}"
-        return 0
+  if [[ -n "${QUADLET_BIN:-}" ]]; then
+    echo "${QUADLET_BIN}"
+    return 0
+  fi
+
+  local candidate
+
+  for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
+    if [[ -x "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
     fi
+  done
 
-    local candidate
+  log_error "quadlet binary not found" \
+    "(looked in /usr/libexec/podman, /usr/lib/podman)."
+  log_error "set QUADLET_BIN=/path/to/quadlet to override."
 
-    for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
-        if [[ -x "${candidate}" ]]; then
-            echo "${candidate}"
-            return 0
-        fi
-    done
-
-    log_error "quadlet binary not found (looked in /usr/libexec/podman, /usr/lib/podman)."
-    log_error "set QUADLET_BIN=/path/to/quadlet to override."
-
-    return 1
+  return 1
 }
 
 install_config_dir() {
-    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
 }
 
 install_env_dir() {
-    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
+}
+
+# list_quadlet_units
+#
+# Prints the path to every quadlet unit file (one per QUADLET_UNIT_SUFFIXES
+# entry, e.g. *.container, *.network, *.image) present in QUADLET_SRC_DIR,
+# one per line. install.sh/uninstall.sh derive what to install/remove from
+# this instead of a hardcoded file list.
+list_quadlet_units() {
+  local suffix
+  local -a matches
+  shopt -s nullglob
+  for suffix in "${QUADLET_UNIT_SUFFIXES[@]}"; do
+    matches=("${QUADLET_SRC_DIR}"/*."${suffix}")
+    (( ${#matches[@]} > 0 )) && printf '%s\n' "${matches[@]}"
+  done
+  shopt -u nullglob
+}
+
+# container_service_names
+#
+# Prints the systemd service name Quadlet generates for each *.container
+# unit in QUADLET_SRC_DIR (mcp-github.container -> mcp-github.service),
+# one per line. install.sh/uninstall.sh derive which services to
+# start/stop from this instead of a hardcoded mcp-*.service list.
+container_service_names() {
+  local unit
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.container; do
+    printf '%s.service\n' "$(basename "${unit}" .container)"
+  done
+  shopt -u nullglob
+}
+
+# quadlet_unit_value unit_file key
+#
+# Prints the value of the first "key=value" line found in unit_file
+# (e.g. key=ContainerName), or nothing if key isn't set.
+quadlet_unit_value() {
+  local unit_file="$1" key="$2"
+
+  awk -F= -v k="${key}" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' \
+    "${unit_file}"
+}
+
+# resolve_unit_specifiers value unit_file
+#
+# Expands the %N systemd specifier (the unit's own name, sans type
+# suffix) in value. The units in this repo only rely on %N; extend this
+# if a future unit needs another specifier (%h, %n, ...).
+resolve_unit_specifiers() {
+  local value="$1" unit_file="$2"
+  local base
+  base="$(basename "${unit_file}")"
+  base="${base%.*}"
+
+  printf '%s\n' "${value//%N/${base}}"
+}
+
+# quadlet_container_names
+#
+# Prints the podman container name Quadlet creates for each *.container
+# unit in QUADLET_SRC_DIR, one per line: ContainerName= (with %N
+# resolved) when set, otherwise the unit's own basename -- Quadlet's
+# default when ContainerName= is absent.
+quadlet_container_names() {
+  local unit name
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.container; do
+    name="$(quadlet_unit_value "${unit}" ContainerName)"
+    if [[ -n "${name}" ]]; then
+      name="$(resolve_unit_specifiers "${name}" "${unit}")"
+    else
+      name="$(basename "${unit}" .container)"
+    fi
+    printf '%s\n' "${name}"
+  done
+  shopt -u nullglob
+}
+
+# quadlet_network_names
+#
+# Prints the podman network name Quadlet creates for each *.network unit
+# in QUADLET_SRC_DIR, one per line: NetworkName= (with %N resolved) when
+# set, otherwise the unit's own basename.
+quadlet_network_names() {
+  local unit name
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.network; do
+    name="$(quadlet_unit_value "${unit}" NetworkName)"
+    if [[ -n "${name}" ]]; then
+      name="$(resolve_unit_specifiers "${name}" "${unit}")"
+    else
+      name="$(basename "${unit}" .network)"
+    fi
+    printf '%s\n' "${name}"
+  done
+  shopt -u nullglob
 }

@@ -16,26 +16,20 @@ source "${SCRIPT_DIR}/common.sh"
 # Copies every quadlet unit file (*.container, *.volume, *.network, *.kube,
 # *.image, *.build, *.pod, *.artifact) from QUADLET_SRC_DIR into config_dir.
 install_units() {
-    local config_dir="$1"
+  local config_dir="$1"
 
-    log_info "installing quadlet units to ${config_dir}"
-    mkdir -p "${config_dir}"
+  log_info "installing quadlet units to ${config_dir}"
+  mkdir -p "${config_dir}"
 
-    local -ar quadlet_suffixes=(container volume network kube image build pod artifact)
-    local -a units=()
-    local suffix
-    shopt -s nullglob
-    for suffix in "${quadlet_suffixes[@]}"; do
-        units+=("${QUADLET_SRC_DIR}"/*."${suffix}")
-    done
-    shopt -u nullglob
+  local -a units=()
+  mapfile -t units < <(list_quadlet_units)
 
-    if (( ${#units[@]} == 0 )); then
-        log_warn "no quadlet unit files found in ${QUADLET_SRC_DIR}"
-        return 0
-    fi
+  if (( ${#units[@]} == 0 )); then
+    log_warn "no quadlet unit files found in ${QUADLET_SRC_DIR}"
+    return 0
+  fi
 
-    install -m 0644 "${units[@]}" "${config_dir}/"
+  install -m 0644 "${units[@]}" "${config_dir}/"
 }
 
 # install_env_templates env_dir
@@ -45,20 +39,21 @@ install_units() {
 # stripping the .example suffix, skipping any destination that already
 # exists so a reinstall never clobbers a filled-in secret or edited config.
 install_env_templates() {
-    local env_dir="$1"
+  local env_dir="$1"
 
-    log_info "installing config templates to ${env_dir}"
-    mkdir -p "${env_dir}"
-    local example dest
-    for example in "${ENV_EXAMPLE_DIR}"/*.example; do
-        dest="${env_dir}/$(basename "${example}" .example)"
-        if [[ -e "${dest}" ]]; then
-            log_info "skip ${dest} (already exists)"
-        else
-            install -m 0600 "${example}" "${dest}"
-            log_info "wrote ${dest} (fill in real values before starting the service)"
-        fi
-    done
+  log_info "installing config templates to ${env_dir}"
+  mkdir -p "${env_dir}"
+
+  local example dest
+  for example in "${ENV_EXAMPLE_DIR}"/*.example; do
+    dest="${env_dir}/$(basename "${example}" .example)"
+    if [[ -e "${dest}" ]]; then
+      log_info "skip ${dest} (already exists)"
+    else
+      install -m 0600 "${example}" "${dest}"
+      log_info "wrote ${dest} (fill in real values before starting the service)"
+    fi
+  done
 }
 
 # install_local_config env_dir
@@ -72,25 +67,27 @@ install_env_templates() {
 # in their checkout, and a reinstall should pick up edits made since the
 # last one. .gitignore files are repo bookkeeping only and are skipped.
 install_local_config() {
-    local env_dir="$1"
+  local env_dir="$1"
 
-    [[ -d "${MCP_QUADLETS_CONFIG_DIR}" ]] || return 0
+  [[ -d "${MCP_QUADLETS_CONFIG_DIR}" ]] || return 0
 
-    log_info "installing local config overlay from config/mcp-quadlets to ${env_dir}"
+  local msg="installing local config overlay from config/mcp-quadlets "
+  msg+="to ${env_dir}"
+  log_info "${msg}"
 
-    local path rel dest
-    while IFS= read -r -d '' path; do
-        rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
-        mkdir -p "${env_dir}${rel}"
-    done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type d -print0)
+  local path rel dest
+  while IFS= read -r -d '' path; do
+    rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
+    mkdir -p "${env_dir}${rel}"
+  done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type d -print0)
 
-    while IFS= read -r -d '' path; do
-        [[ "$(basename "${path}")" == .gitignore ]] && continue
-        rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
-        dest="${env_dir}${rel}"
-        install -m 0600 "${path}" "${dest}"
-        log_info "wrote ${dest}"
-    done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type f -print0)
+  while IFS= read -r -d '' path; do
+    [[ "$(basename "${path}")" == .gitignore ]] && continue
+    rel="${path#"${MCP_QUADLETS_CONFIG_DIR}"}"
+    dest="${env_dir}${rel}"
+    install -m 0600 "${path}" "${dest}"
+    log_info "wrote ${dest}"
+  done < <(find "${MCP_QUADLETS_CONFIG_DIR}" -type f -print0)
 }
 
 # register_units
@@ -104,10 +101,10 @@ install_local_config() {
 # persistent unit file to symlink to, but these are generator-owned, so
 # it fails with "Unit ... is transient or generated".
 register_units() {
-    local -r systemctl_reload_cmd="systemctl --user daemon-reload"
+  local -r systemctl_reload_cmd="systemctl --user daemon-reload"
 
-    log_info "$systemctl_reload_cmd"
-    ${systemctl_reload_cmd}
+  log_info "${systemctl_reload_cmd}"
+  ${systemctl_reload_cmd}
 }
 
 # print_next_steps env_dir config_dir
@@ -116,9 +113,12 @@ register_units() {
 # through the logger since they're meant to be read as-is, not as a
 # timestamped log line.
 print_next_steps() {
-    local env_dir="$1" config_dir="$2"
+  local env_dir="$1" config_dir="$2"
 
-    cat <<EOF
+  local -a services=()
+  mapfile -t services < <(container_service_names)
+
+  cat <<EOF
 
 Next steps:
   1. Edit ${env_dir}/*.env with real credentials.
@@ -128,28 +128,27 @@ Next steps:
      ${env_dir}/etc/mcp-kubernetes-server/.
   3. Resolve the TODO(verify) notes in ${config_dir}/mcp-github.container
      and mcp-kubernetes.container (transport flags, kubernetes image).
-  4. systemctl --user start mcp-github.service mcp-kubernetes.service
+  4. systemctl --user start ${services[*]}
   5. So these keep running after you log out, and start again on boot:
      loginctl enable-linger "\$USER"
 EOF
 }
 
 main() {
-    init_logging
+  init_logging
 
-    "${SCRIPT_DIR}/lint.sh"
+  "${SCRIPT_DIR}/lint.sh"
 
-    local config_dir
-    config_dir="$(install_config_dir)"
-    local env_dir
-    env_dir="$(install_env_dir)"
+  local config_dir
+  config_dir="$(install_config_dir)"
+  local env_dir
+  env_dir="$(install_env_dir)"
 
-    install_units "${config_dir}"
-    install_env_templates "${env_dir}"
-    install_local_config "${env_dir}"
-    register_units
-    print_next_steps "${env_dir}" "${config_dir}"
+  install_units "${config_dir}"
+  install_env_templates "${env_dir}"
+  install_local_config "${env_dir}"
+  register_units
+  print_next_steps "${env_dir}" "${config_dir}"
 }
 
-# shellcheck disable=SC2068
-main $@
+main "$@"

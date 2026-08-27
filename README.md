@@ -82,7 +82,9 @@ make install    # lint, then copy units to ~/.config/containers/systemd,
                 # (but not start) both services
 make uninstall  # stop, disable, and remove the installed units;
                 # env files (secrets) are left in place
-make uninstall-purge  # uninstall, and also delete the env files
+make uninstall-purge  # uninstall, and also delete the env files and
+                       # remove this repo's podman containers/networks
+                       # (volumes and secrets are left alone)
 make test       # run the bats suite against all of the above
 ```
 
