@@ -4,25 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Podman Quadlet unit files that run two MCP (Model Context Protocol) servers
-(GitHub, Kubernetes) as rootless, per-user systemd services, plus a
-Makefile/scripts harness to lint, generate, install, and uninstall them. It
-is a deployment/config repo, not an application — there is no application
-source code to build or run, only unit files, shell scripts, and bats tests.
+Podman Quadlet unit files and installable wrapper scripts that run two MCP
+(Model Context Protocol) servers: Kubernetes as a rootless, per-user systemd
+service, and GitHub as a per-connection `podman run` spawned by an MCP
+client (see "Transport caveat" in README.md — `github-mcp-server` only
+supports the `stdio` transport, which doesn't fit a long-lived systemd
+unit). A Makefile/`hack` harness lints, generates, installs, and uninstalls
+all of it. It is a deployment/config repo, not an application — there is no
+application source code to build or run, only unit files, shell scripts,
+and bats tests.
 
 ## Commands
 
 ```bash
 git submodule update --init --recursive   # or: make submodules — required once after cloning
 
-make lint             # shellcheck scripts/*.sh + dry-run every quadlet unit through
-                       # the local `quadlet` binary (no real systemd paths touched)
+make lint             # shellcheck hack/*.sh + home/bin/*.sh + home/lib/*.sh, and
+                       # dry-run every quadlet unit through the local `quadlet`
+                       # binary (no real systemd paths touched)
 make generate         # materialize the systemd units quadlet would produce into
                        # .generated/dryrun-output-<commit>[-dirty].txt, for
                        # inspecting ExecStart
 make install          # lint, then copy units to ~/.config/containers/systemd,
-                       # write env templates to ~/.config/mcp-quadlets, daemon-reload,
-                       # enable (not start) both services
+                       # write env templates to ~/.config/mcp-quadlets, daemon-reload
+                       # (quadlet auto-enables via each unit's own [Install])
+make install-local    # install home/bin/* to ~/.local/bin (0744) and home/lib/*
+                       # to ~/.local/lib/mcp-quadlets (0644) -- not systemd-managed,
+                       # so this is separate from `make install`
 make uninstall        # stop, disable, remove installed units; env secrets kept
 make uninstall-purge  # uninstall, and also delete the env files
 make test             # fetch submodules if needed, then run the full bats suite
@@ -44,10 +52,24 @@ test/vendor/bats-core/bin/bats test/install.bats -f "never overwrites"
 
 ## Architecture
 
-**`config/` is a literal filesystem mirror.** Everything under
-`config/containers/systemd/` lands at the identical relative path under
-`$XDG_CONFIG_HOME` (usually `~/.config`) when installed. Don't add files
-here that aren't meant to be installed verbatim.
+**`home/` holds everything that ends up under the user's `$HOME`; `hack/`
+never does.** `home/` mirrors destination roots the same way `config/` used
+to at repo root: `home/config/` → `$XDG_CONFIG_HOME` (usually `~/.config`),
+`home/bin/` → `~/.local/bin`, `home/lib/` → `~/.local/lib/mcp-quadlets`.
+Everything under one of those three lands at the identical relative path
+under its destination when installed — don't add files there that aren't
+meant to be installed verbatim. `hack/` is the opposite: the lint/generate/
+install/uninstall harness that operates *on* `home/`, never installed
+itself, always run from the repo checkout.
+
+**`home/bin/` vs `home/lib/`.** `home/bin/*` are standalone, directly
+executable entry points (installed mode `0744` by `make install-local`) —
+currently just `mcp-github-stdio.sh`. `home/lib/*` (currently empty, kept
+via `.gitkeep`) is for library code a `home/bin/` script sources rather
+than runs — installed mode `0644` (never executable) to
+`~/.local/lib/mcp-quadlets`, one level below a plain `~/.local/lib/<file>`
+specifically to avoid colliding with other tools' files there. Neither is
+`hack/common.sh`: that's dev-harness-only and never installed at all.
 
 **`env/*.example` is a separate, non-mirrored path** — despite the
 directory's name, it holds both env-file and config-file templates (e.g.
@@ -55,7 +77,7 @@ directory's name, it holds both env-file and config-file templates (e.g.
 `make install` copies each to `~/.config/mcp-quadlets/<name>` (stripping
 only the `.example` suffix) *only if that destination doesn't already
 exist*, so a reinstall never clobbers a filled-in secret or hand-edited
-config. This is why these templates live outside `config/` instead of
+config. This is why these templates live outside `home/config/` instead of
 being mirrored — a mirror would tempt clobbering real values on reinstall.
 
 **The `-systemd.env` / `-systemd.env.example` suffix marks the `[Service]`
@@ -75,27 +97,30 @@ those** — it's not `EnvironmentFile=`'d in at all. It's bind-mounted
 straight into the container by a `Volume=` line in the `.container` unit,
 at the in-container path its sibling `-systemd.env` file points the
 relevant flag (e.g. `CONFIG` → `--config`) at. `install_env_templates()`
-in `scripts/install.sh` globs `*.example` generically (not `*.env.example`)
+in `hack/install.sh` globs `*.example` generically (not `*.env.example`)
 specifically so this kind of file gets picked up too — keep that in mind
 if adding a new template that isn't a `.env` file.
 
-**`scripts/common.sh`** is sourced (not executed) by every other script in
-`scripts/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
-`QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`, and the
+**`hack/common.sh`** is sourced (not executed) by every other script in
+`hack/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
+`QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`,
+`MCP_QUADLETS_CONFIG_DIR`, `HOME_BIN_SRC_DIR`, `HOME_LIB_SRC_DIR`, and the
 functions `init_logging()`, `resolve_quadlet_bin()`, `install_config_dir()`,
-`install_env_dir()`, plus a set of quadlet-unit-introspection helpers that
-derive service/container/network names from the unit files themselves
-instead of hardcoding them: `list_quadlet_units()` (every unit file
-matching `QUADLET_UNIT_SUFFIXES` in `QUADLET_SRC_DIR`),
-`container_service_names()` (the `<name>.service` Quadlet generates per
-`*.container` unit), `quadlet_container_names()`/`quadlet_network_names()`
-(the podman container/network name Quadlet creates per `*.container`/
-`*.network` unit -- its `ContainerName=`/`NetworkName=` value if set,
-else the unit's own basename), and the `quadlet_unit_value()` /
-`resolve_unit_specifiers()` helpers those two use to read a unit's
-`key=value` lines and expand the `%N` systemd specifier. New scripts
-should source `common.sh` the same way rather than recomputing any of
-this.
+`install_env_dir()`, `install_bin_dir()`, `install_lib_dir()`, plus a set of
+quadlet-unit-introspection helpers that derive service/container/network
+names from the unit files themselves instead of hardcoding them:
+`list_quadlet_units()` (every unit file matching `QUADLET_UNIT_SUFFIXES` in
+`QUADLET_SRC_DIR`), `container_service_names()` (the `<name>.service`
+Quadlet generates per `*.container` unit), `quadlet_container_names()`/
+`quadlet_network_names()` (the podman container/network name Quadlet
+creates per `*.container`/`*.network` unit -- its `ContainerName=`/
+`NetworkName=` value if set, else the unit's own basename), and the
+`quadlet_unit_value()` / `resolve_unit_specifiers()` helpers those two use
+to read a unit's `key=value` lines and expand the `%N` systemd specifier.
+New scripts should source `common.sh` the same way rather than recomputing
+any of this — this applies to `hack/*.sh` only; `home/bin/*.sh` scripts
+deliberately don't (see the stdio-purity note in
+`home/bin/mcp-github-stdio.sh`).
 
 **`vendor/bash-logger`** (git submodule, `git@github.com:s-fairchild/bash-logger.git`)
 provides the `log_debug`/`log_info`/`log_warn`/`log_error`/... functions
@@ -108,11 +133,13 @@ for why that shielding is load-bearing. `make lint`/`generate`/`install`/
 checks for `vendor/bash-logger/logging.sh` before fetching.
 
 **`lint.sh` / `generate.sh` never touch real systemd paths.** Both point
-the local `quadlet` binary at this repo's `config/containers/systemd/` via
-the `QUADLET_UNIT_DIRS` env var (which `quadlet` itself supports for this
-purpose) and dry-run into a throwaway/`.generated` dir. Only `install.sh`
-and `uninstall.sh` write to real paths, and only under `$XDG_CONFIG_HOME`
-— never as root, never outside the user's own config.
+the local `quadlet` binary at this repo's `home/config/containers/systemd/`
+via the `QUADLET_UNIT_DIRS` env var (which `quadlet` itself supports for
+this purpose) and dry-run into a throwaway/`.generated` dir. Only
+`install.sh` and `uninstall.sh` write to real paths, and only under
+`$XDG_CONFIG_HOME` — never as root, never outside the user's own config.
+`install-local.sh` writes to `~/.local/bin` and
+`~/.local/lib/mcp-quadlets` — also never as root.
 
 **Test isolation (`test/test_helper.bash`)**: `setup_sandbox` redirects
 `HOME`/`XDG_CONFIG_HOME` into a `mktemp -d` sandbox and prepends
@@ -128,30 +155,44 @@ not vendored copies — `make test`/`make submodules` runs
 `git submodule update --init --recursive` automatically if
 `test/vendor/bats-core/bin/bats` isn't executable yet.
 
-**Each `.container` unit's `Image=` points at a sibling `.image` unit**
-(`github-mcp-server.image`, `kubernetes-mcp-server.image`), not a bare
-registry reference — Quadlet resolves the `.image` suffix to that unit,
-generates `<name>-image.service` to pull it, and auto-adds the
+**`mcp-kubernetes.container`'s `Image=` points at a sibling `.image` unit**
+(`kubernetes-mcp-server.image`), not a bare registry reference — Quadlet
+resolves the `.image` suffix to that unit, generates
+`kubernetes-mcp-server-image.service` to pull it, and auto-adds the
 `Requires=`/`After=` dependency on the `.container`'s generated service.
 The actual `podman pull`-equivalent image reference lives in the
 `[Image]` section of the `.image` file, so change it there, not in the
-`.container` file.
+`.container` file. `github-mcp-server.image` has no `.container` pointing
+at it — nothing Quadlet-managed runs the GitHub server (see below) — it
+exists standalone purely to keep that image pulled/current.
 
-**The two `.container` units (and `kubernetes-mcp-server.image`) are
-intentionally incomplete** (`TODO(verify)` comments in each): MCP servers
-are normally spawned per-connection over stdio, which doesn't fit a
-long-lived systemd unit. These units assume the container image supports
+**`mcp-kubernetes.container` is intentionally incomplete**
+(`TODO(verify)` comments in it and in `kubernetes-mcp-server.image`): MCP
+servers are normally spawned per-connection over stdio, which doesn't fit
+a long-lived systemd unit. This unit assumes the container image supports
 a persistent SSE/HTTP transport flag instead (`--transport sse --port
-<N>`), but the exact flag and — for the Kubernetes server specifically —
-which of several same-named community images to use, must be verified
-against the real image's `--help` output before this is
-production-usable. See README.md "Transport caveat" before changing
-`Image=` (in the `.image` file) or `Exec=` (in the `.container` file).
-README.md "Configuring each server" links each image's upstream repo and
-lists which of its env vars/flags this repo currently sets vs. leaves at
-defaults — check it before adding new keys to `env/*.env.example`, and
-note it already flags that the Kubernetes server's real flag is `--port`
-(Streamable HTTP), not the `--transport sse` currently in `Exec=`.
+<N>`), but the exact flag and which of several same-named community
+images to use must be verified against the real image's `--help` output
+before this is production-usable. See README.md "Transport caveat" before
+changing `Image=` (in the `.image` file) or `Exec=` (in the `.container`
+file). README.md "Configuring each server" links the image's upstream
+repo and lists which of its env vars/flags this repo currently sets vs.
+leaves at defaults — check it before adding new keys to
+`env/mcp-kubernetes*.env.example`, and note it already flags that the
+Kubernetes server's real flag is `--port` (Streamable HTTP), not the
+`--transport sse` currently in `Exec=`.
+
+**`github-mcp-server` doesn't have this problem, and isn't Quadlet-managed
+at all.** It only supports the `stdio` transport (confirmed against
+upstream — no self-hosted HTTP/SSE mode exists; GitHub's own hosted
+`api.githubcopilot.com` endpoint is unrelated). `home/bin/mcp-github-stdio.sh`
+is what actually runs it: an MCP client's stdio "command" points at that
+script directly, which resolves the installed env files under
+`~/.config/mcp-quadlets/` and `exec`s `podman run -i --rm ...
+ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
+per connection. See README.md "Transport caveat" for the full rationale
+and why `mcp-github.container` was removed rather than kept
+`TODO(verify)` like the Kubernetes unit.
 
 ## Conventions
 
@@ -159,10 +200,15 @@ note it already flags that the Kubernetes server's real flag is `--port`
   `BASH_SOURCE`, 2-space indentation per Google's Shell Style Guide
   (https://google.github.io/styleguide/shellguide.html) -- the Makefile
   itself still requires literal tabs for recipe lines, but that's a `make`
-  syntax requirement, not a `scripts/*.sh` convention.
-- Every directly-run script (`scripts/*.sh`) puts its logic in functions and
-  calls a `main "$@"` at the bottom; `scripts/common.sh` is a library (only
-  sourced) and has no `main`.
+  syntax requirement, not a `hack/*.sh`/`home/bin/*.sh` convention.
+- Every directly-run script in `hack/` puts its logic in functions and
+  calls a `main "$@"` at the bottom; `hack/common.sh` is a library (only
+  sourced) and has no `main`. `home/bin/*.sh` scripts follow the same
+  function/`main` shape but deliberately don't source `hack/common.sh` —
+  they're installed and run standalone on a machine that may not have
+  this repo checked out, and (for `mcp-github-stdio.sh` specifically)
+  can't risk `bash-logger`'s default stdout logging corrupting an MCP
+  stdio stream.
 - Global variables are kept to a minimum and marked `readonly` once
   assigned; anything more than the paths in `common.sh` should usually be a
   `local` inside a function instead.
@@ -170,9 +216,12 @@ note it already flags that the Kubernetes server's real flag is `--port`
   vendored `bash-logger`, via `init_logging()`) instead of `echo`. Plain
   `echo`/`cat` stays for actual function return values (e.g.
   `resolve_quadlet_bin`) and for human-facing instructional text not meant
-  to look like a log line (e.g. `install.sh`'s "Next steps" block).
+  to look like a log line (e.g. `install.sh`'s "Next steps" block). This is
+  a `hack/` convention only — `home/bin/*.sh` scripts avoid the logger
+  entirely (see above) and write diagnostics straight to stderr with `echo`.
 - Quadlet units use `%h` for the invoking user's home directory
   (systemd specifier), not `$HOME`.
-- Both services publish only to `127.0.0.1` (8081 GitHub, 8082 Kubernetes)
-  — never bind a published port to a wider interface without updating the
-  README's "Ports" section too.
+- The Kubernetes service publishes only to `127.0.0.1:8082` — never bind a
+  published port to a wider interface without updating the README's
+  "Ports" section too. The GitHub server publishes nothing; it has no
+  Quadlet-managed container (see "Architecture" above).

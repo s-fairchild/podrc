@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Validate every quadlet file under config/containers/systemd/ without
-# touching any real systemd search path, by pointing the local quadlet
-# binary's dry-run mode at this repo via QUADLET_UNIT_DIRS.
+# Validate every quadlet file under home/config/containers/systemd/
+# without touching any real systemd search path, by pointing the local
+# quadlet binary's dry-run mode at this repo via QUADLET_UNIT_DIRS.
 #
-# Usage: scripts/lint.sh
+# Usage: hack/lint.sh
 
 set -euo pipefail
 
@@ -13,16 +13,22 @@ source "${SCRIPT_DIR}/common.sh"
 
 # run_shellcheck
 #
-# Runs shellcheck over scripts/*.sh if available; warns and skips
-# otherwise.
+# Runs shellcheck over hack/*.sh, home/bin/*.sh, and home/lib/*.sh (the
+# latter two if any exist yet) if available; warns and skips otherwise.
 run_shellcheck() {
-  log_info "shellcheck scripts/*.sh"
+  log_info "shellcheck hack/*.sh home/bin/*.sh home/lib/*.sh"
 
-  if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck -x "${SCRIPT_DIR}"/*.sh
-  else
+  if ! command -v shellcheck >/dev/null 2>&1; then
     log_fatal "failed to lint shell scripts: shellcheck not installed."
+    return
   fi
+
+  local -a targets=("${SCRIPT_DIR}"/*.sh)
+  shopt -s nullglob
+  targets+=("${HOME_BIN_SRC_DIR}"/*.sh "${HOME_LIB_SRC_DIR}"/*.sh)
+  shopt -u nullglob
+
+  shellcheck -x "${targets[@]}"
 }
 
 # dryrun_quadlets quadlet_bin out_dir

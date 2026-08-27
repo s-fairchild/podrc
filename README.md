@@ -6,39 +6,51 @@ systemd services: a GitHub MCP server and a Kubernetes MCP server.
 
 ## Layout
 
-`config/` mirrors the filesystem layout these files have once installed —
-everything under it lands at the matching path under `$XDG_CONFIG_HOME`
-(usually `~/.config`):
+`home/` mirrors the filesystem layout these files have once installed —
+everything under `home/config/` lands at the matching path under
+`$XDG_CONFIG_HOME` (usually `~/.config`), everything under `home/bin/` at
+the matching path under `~/.local/bin`, everything under `home/lib/` at
+the matching path under `~/.local/lib/mcp-quadlets`. `hack/` is the
+opposite: the lint/generate/install/uninstall harness that operates on
+`home/`, never itself installed anywhere.
 
 ```
 mcp-quadlets/
-├── config/
-│   └── containers/
-│       └── systemd/            -> ~/.config/containers/systemd/
-│           ├── mcp.network                    shared podman network
-│           ├── github-mcp-server.image        GitHub MCP server image pull
-│           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
-│           ├── mcp-github.container           GitHub MCP server
-│           └── mcp-kubernetes.container       Kubernetes MCP server
-├── env/                         -> ~/.config/mcp-quadlets/* (copied, not mirrored 1:1)
+├── home/
+│   ├── config/
+│   │   └── containers/
+│   │       └── systemd/            -> ~/.config/containers/systemd/
+│   │           ├── mcp.network                    shared podman network
+│   │           ├── github-mcp-server.image        GitHub MCP server image pull
+│   │           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
+│   │           └── mcp-kubernetes.container       Kubernetes MCP server
+│   ├── bin/                         -> ~/.local/bin/* (mode 0744)
+│   │   └── mcp-github-stdio.sh                    GitHub MCP server, spawned per-connection
+│   └── lib/                         -> ~/.local/lib/mcp-quadlets/* (mode 0644, not executable)
+│       (empty for now -- for library code home/bin/ scripts source)
+├── env/                              -> ~/.config/mcp-quadlets/* (copied, not mirrored 1:1)
 │   ├── mcp-github.env.example
 │   ├── mcp-github-systemd.env.example
 │   ├── mcp-kubernetes.env.example
 │   ├── mcp-kubernetes-systemd.env.example
 │   └── mcp-kubernetes.toml.example
-├── scripts/                     lint/generate/install/uninstall, called by the Makefile
-├── test/                        bats test suite for the Makefile targets
-│   └── vendor/                  bats-core, bats-support, bats-assert (git submodules)
+├── hack/                             lint/generate/install/install-local/uninstall, called by the Makefile
+├── test/                             bats test suite for the Makefile targets
+│   └── vendor/                       bats-core, bats-support, bats-assert (git submodules)
 └── Makefile
 ```
+
+There's no `mcp-github.container` — `github-mcp-server` only supports the
+`stdio` transport, which doesn't fit a long-lived systemd service; see
+"Transport caveat" below.
 
 `env/*.example` are templates — env files and, where a server takes one, a
 config file (e.g. `mcp-kubernetes.toml.example`). `make install` copies
 each to `~/.config/mcp-quadlets/<name>` (dropping the `.example` suffix)
 **only if that destination doesn't already exist**, so real secrets or
 hand-edited config are never clobbered by a reinstall, and none of it
-lives under `config/` (which is a straight filesystem mirror you might
-otherwise be tempted to symlink wholesale).
+lives under `home/config/` (which is a straight filesystem mirror you
+might otherwise be tempted to symlink wholesale).
 
 Files named `<name>.env.example` are referenced by `EnvironmentFile=` in
 each unit's `[Container]` section — they become environment variables
@@ -73,13 +85,17 @@ git submodule update --init --recursive   # or: make submodules
 
 ```bash
 make lint       # dry-run every quadlet unit through the local `quadlet`
-                # binary (no real systemd paths touched) + shellcheck scripts/
+                # binary (no real systemd paths touched) + shellcheck
+                # hack/*.sh, home/bin/*.sh, home/lib/*.sh
 make generate   # materialize the systemd units quadlet would produce into
                 # .generated/, so you can eyeball the resulting ExecStart
 make install    # lint, then copy units to ~/.config/containers/systemd,
                 # write env templates to ~/.config/mcp-quadlets (skipping
-                # any that already exist), daemon-reload, and enable
-                # (but not start) both services
+                # any that already exist), daemon-reload (quadlet
+                # auto-enables via each unit's own [Install])
+make install-local  # install home/bin/* to ~/.local/bin (0744) and
+                     # home/lib/* to ~/.local/lib/mcp-quadlets (0644) --
+                     # not systemd-managed, so separate from `make install`
 make uninstall  # stop, disable, and remove the installed units;
                 # env files (secrets) are left in place
 make uninstall-purge  # uninstall, and also delete the env files and
@@ -89,49 +105,69 @@ make test       # run the bats suite against all of the above
 ```
 
 `make lint` and `make generate` point the `quadlet` binary at this repo's
-`config/containers/systemd/` via the `QUADLET_UNIT_DIRS` environment
+`home/config/containers/systemd/` via the `QUADLET_UNIT_DIRS` environment
 variable it supports for exactly this purpose — they never read from or
 write to your real `~/.config/containers/systemd`. Only `make install` /
-`make uninstall` touch real paths, and only under `$XDG_CONFIG_HOME`.
+`make uninstall` / `make install-local` touch real paths, and only under
+`$XDG_CONFIG_HOME` / `~/.local`.
 
 ### First real install
 
 1. `make install`
-2. Fill in real values in `~/.config/mcp-quadlets/mcp-github.env`,
-   `mcp-kubernetes.env`, `mcp-github-systemd.env`, and
-   `mcp-kubernetes-systemd.env` (GitHub PAT / podman secret name,
-   kubeconfig path, etc). Edit `mcp-kubernetes.toml` too if you need
-   `--config`-driven settings; clear `CONFIG` in
+2. Fill in real values in `~/.config/mcp-quadlets/mcp-github.env`
+   (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`), `mcp-github-systemd.env`
+   (`GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET`), `mcp-kubernetes.env`, and
+   `mcp-kubernetes-systemd.env` (kubeconfig path, etc). Create the GitHub
+   App private key's podman secret separately —
+   `podman secret create github-app-private-key ./your-app.private-key.pem`
+   — it's not written by `make install`. Edit `mcp-kubernetes.toml` too if
+   you need `--config`-driven settings; clear `CONFIG` in
    `mcp-kubernetes-systemd.env` and drop the matching `Volume=`/`--config`
    lines in `mcp-kubernetes.container` if you don't.
-3. Resolve the `TODO(verify)` notes in both `.container` files and the
-   `kubernetes-mcp-server.image` file — see "Transport caveat" below,
-   this is not optional.
-4. `systemctl --user start mcp-github.service mcp-kubernetes.service`
-5. `loginctl enable-linger "$USER"` if you want these to keep running
+3. Resolve the `TODO(verify)` notes in `mcp-kubernetes.container` and
+   `kubernetes-mcp-server.image` — see "Transport caveat" below, this is
+   not optional.
+4. `systemctl --user start mcp-kubernetes.service`
+5. `loginctl enable-linger "$USER"` if you want that to keep running
    after you log out / restart without logging back in. This changes
    real system state (registers your user with `systemd-logind` for
    lingering) so it's a deliberate manual step, not something
    `make install` does for you.
+6. `make install-local`, then point your MCP client's stdio server
+   command at `~/.local/bin/mcp-github-stdio.sh` (e.g.
+   `claude mcp add mcp-github --scope user -- ~/.local/bin/mcp-github-stdio.sh`
+   for Claude Code). There's no systemd service to start for this one —
+   see "Transport caveat".
 
 ## Transport caveat
 
 MCP servers are usually spawned per-connection over stdio by the client
 (`docker run -i ...`) — that model doesn't fit a long-lived systemd
 service, which has no client attached to its stdin/stdout. Running one
-as a Quadlet-managed service only makes sense if the server has a
-persistent network transport (HTTP or SSE) you can point an MCP client
+as a Quadlet-managed service only makes sense outright if the server has
+a persistent network transport (HTTP or SSE) you can point an MCP client
 at via URL instead.
 
-Both `.container` files here assume a `--transport sse --port <N>`-style
-flag exists on the image in use, and both are marked `TODO(verify)`
-because the exact flag/env var (and, for the Kubernetes server, which of
-several same-named community images to run) depends on the specific
-image version — check `podman run --rm <image> --help` before deploying.
-The image reference itself lives in the corresponding `.image` file
-(`github-mcp-server.image` / `kubernetes-mcp-server.image`); update
-`Image=` there and `Exec=` in the `.container` file to match what you
-find, then re-run `make lint`.
+`github-mcp-server` doesn't have one — `stdio` is the only local
+transport it supports (its "remote"/HTTP mode is GitHub's own hosted
+endpoint at `api.githubcopilot.com`, not something this image can serve
+standalone), so there's no `mcp-github.container` in this repo at all.
+Instead, `home/bin/mcp-github-stdio.sh` is what an MCP client's stdio
+"command" points at directly: it resolves the installed env files under
+`~/.config/mcp-quadlets/` and `exec`s `podman run -i --rm ...
+ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
+per connection, never a resident service. `github-mcp-server.image` still
+exists as a Quadlet unit purely to keep that image pulled/current
+independent of that; nothing's `Image=` points at it.
+
+`mcp-kubernetes.container` still assumes a `--transport sse --port <N>`-
+style flag exists on the image in use, and is marked `TODO(verify)`
+because the exact flag/env var (and which of several same-named
+community images to run) depends on the specific image version — check
+`podman run --rm <image> --help` before deploying. The image reference
+itself lives in `kubernetes-mcp-server.image`; update `Image=` there and
+`Exec=` in `mcp-kubernetes.container` to match what you find, then
+re-run `make lint`.
 
 ## Configuring each server
 
@@ -141,7 +177,7 @@ consult upstream for the full list before adding new keys.
 
 ### GitHub MCP server
 
-`mcp-github.container` / `github-mcp-server.image`. Upstream:
+`home/bin/mcp-github-stdio.sh` / `github-mcp-server.image`. Upstream:
 [github/github-mcp-server](https://github.com/github/github-mcp-server)
 ([README](https://github.com/github/github-mcp-server/blob/main/README.md)
 documents all flags/env vars;
@@ -149,10 +185,17 @@ documents all flags/env vars;
 covers the hosted remote variant, not relevant to this self-hosted setup).
 
 Set by `mcp-github.env.example` / `mcp-github-systemd.env.example` in this
-repo:
-- `GITHUB_PERSONAL_ACCESS_TOKEN` — auth token; here it's injected via a
-  podman secret rather than plain env (see `Secret=` in
-  `mcp-github.container` and `mcp-github-systemd.env.example`)
+repo. Auth is via a GitHub App (see upstream
+[`docs/github-app-auth.md`](https://github.com/github/github-mcp-server/blob/main/docs/github-app-auth.md)),
+not a PAT:
+- `GITHUB_APP_ID` / `GITHUB_APP_INSTALLATION_ID` — plain env, not secret
+- `GITHUB_APP_PRIVATE_KEY_PATH` — path to the mounted PEM, must match the
+  `target=` in `mcp-github-stdio.sh`'s `--secret` flag
+  (`/run/secrets/github-app-key.pem`)
+- `GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET` (in `mcp-github-systemd.env`) —
+  name of the podman secret holding the PEM contents; create it yourself
+  with `podman secret create github-app-private-key ./your-app.pem`,
+  `make install` doesn't do this for you
 - `GITHUB_TOOLSETS` — comma-separated toolsets to enable (equivalent to
   `--toolsets`)
 - `GITHUB_READ_ONLY` — `1` disables all write tools
@@ -160,9 +203,7 @@ repo:
 Other upstream env vars not currently set here, add to
 `mcp-github.env.example` if needed: `GITHUB_HOST` (GitHub Enterprise
 Server / GHE Cloud hostname), `GITHUB_TOOLS` (enable individual tools
-instead of whole toolsets), `GITHUB_INSIDERS` (experimental features),
-`GITHUB_OAUTH_CALLBACK_PORT` (only relevant to the OAuth login flow, not
-the PAT flow used here).
+instead of whole toolsets), `GITHUB_INSIDERS` (experimental features).
 
 ### Kubernetes MCP server
 
@@ -196,6 +237,6 @@ plus the installed `.toml` if you don't need it.
 
 ## Ports
 
-Both services publish to `127.0.0.1` only (`8081` for GitHub, `8082` for
-Kubernetes) — not exposed off the host. Point your MCP client's SSE/HTTP
-transport config at `http://127.0.0.1:8081` / `:8082`.
+`mcp-github-stdio.sh` runs `stdio` and publishes no port. The Kubernetes
+service publishes to `127.0.0.1:8082` only — not exposed off the host.
+Point your MCP client's HTTP transport config at `http://127.0.0.1:8082`.

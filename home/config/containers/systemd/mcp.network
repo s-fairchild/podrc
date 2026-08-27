@@ -14,7 +14,10 @@ ExecStartPre=/bin/sh -c '[ -n "${PODMAN_LOG_LEVEL}" ] || { echo "PODMAN_LOG_LEVE
 
 [Network]
 NetworkName=mcp
-IPAMDriver=dhcp
+InterfaceName=mcp0
+# Just incase InterfaceName doesn't work
+# Options=com.docker.network.bridge.name=mcp0
+IPAMDriver=host-local
 Subnet=10.80.0.0/28
 IPRange=10.80.0.0/28
 # IPRange=10.80.0.1-10.80.0.14

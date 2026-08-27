@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Shared paths/helpers sourced by the other scripts/*.sh entry points.
+# Shared paths/helpers sourced by the other hack/*.sh entry points.
 # Not meant to be run directly.
 
 set -euo pipefail
 
 # Globals (readonly, set once at source time):
-#   SCRIPT_DIR      - absolute path to scripts/, used to locate sibling files
+#   SCRIPT_DIR      - absolute path to hack/, used to locate sibling files
 #   REPO_ROOT       - absolute path to the repo root
 #   QUADLET_SRC_DIR - quadlet units to lint/generate/install; overridable via
 #                     env var so tests can point it at a fixture directory
-#                     instead of config/containers/systemd
+#                     instead of home/config/containers/systemd
 #   QUADLET_UNIT_SUFFIXES - quadlet unit file extensions this repo installs/
-#                     removes/inspects, e.g. mcp-github.container or
+#                     removes/inspects, e.g. mcp-kubernetes.container or
 #                     mcp.network
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, e.g. mcp-kubernetes.env.example or
 #                     mcp-kubernetes.toml.example
-#   MCP_QUADLETS_CONFIG_DIR - config/mcp-quadlets/, a literal mirror of
+#   MCP_QUADLETS_CONFIG_DIR - home/config/mcp-quadlets/, a literal mirror of
 #                     $XDG_CONFIG_HOME/mcp-quadlets/ (like QUADLET_SRC_DIR
 #                     is for containers/systemd/) holding real,
 #                     git-ignored files the user edits directly in their
@@ -25,11 +25,19 @@ set -euo pipefail
 #                     whole on every install; see its
 #                     install_local_config(). Overridable via env var so
 #                     tests can point it at a fixture directory.
+#   HOME_BIN_SRC_DIR - home/bin/, installable scripts install-local.sh
+#                     copies into ~/.local/bin (mode 0744). Overridable via
+#                     env var so tests can point it at a fixture directory.
+#   HOME_LIB_SRC_DIR - home/lib/, library files (sourced by home/bin/
+#                     scripts, never executed directly) install-local.sh
+#                     copies into ~/.local/lib/mcp-quadlets (mode 0644).
+#                     Overridable via env var so tests can point it at a
+#                     fixture directory.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 readonly SCRIPT_DIR
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." >/dev/null 2>&1 && pwd)"
 readonly REPO_ROOT
-QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/config/containers/systemd}"
+QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/home/config/containers/systemd}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly QUADLET_SRC_DIR
 # shellcheck disable=SC2034 # consumed by scripts that source this file
@@ -45,9 +53,15 @@ readonly QUADLET_UNIT_SUFFIXES=(
 )
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
-MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/config/mcp-quadlets}"
+MCP_QUADLETS_CONFIG_DIR="${MCP_QUADLETS_CONFIG_DIR:-${REPO_ROOT}/home/config/mcp-quadlets}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly MCP_QUADLETS_CONFIG_DIR
+HOME_BIN_SRC_DIR="${HOME_BIN_SRC_DIR:-${REPO_ROOT}/home/bin}"
+# shellcheck disable=SC2034 # consumed by scripts that source this file
+readonly HOME_BIN_SRC_DIR
+HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib}"
+# shellcheck disable=SC2034 # consumed by scripts that source this file
+readonly HOME_LIB_SRC_DIR
 
 # init_logging
 #
@@ -119,6 +133,14 @@ install_env_dir() {
   echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcp-quadlets"
 }
 
+install_bin_dir() {
+  echo "${HOME}/.local/bin"
+}
+
+install_lib_dir() {
+  echo "${HOME}/.local/lib/mcp-quadlets"
+}
+
 # list_quadlet_units
 #
 # Prints the path to every quadlet unit file (one per QUADLET_UNIT_SUFFIXES
@@ -147,6 +169,22 @@ container_service_names() {
   shopt -s nullglob
   for unit in "${QUADLET_SRC_DIR}"/*.container; do
     printf '%s.service\n' "$(basename "${unit}" .container)"
+  done
+  shopt -u nullglob
+}
+
+# network_service_names
+#
+# Prints the systemd service name Quadlet generates for each *.network
+# unit in QUADLET_SRC_DIR (mcp.network -> mcp-network.service), one per
+# line. uninstall.sh stops these directly (rather than calling `podman
+# network rm`) so that NetworkDeleteOnStop=true on the unit handles
+# actually removing the podman network.
+network_service_names() {
+  local unit
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.network; do
+    printf '%s-network.service\n' "$(basename "${unit}" .network)"
   done
   shopt -u nullglob
 }

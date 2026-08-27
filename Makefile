@@ -10,23 +10,27 @@ help: ## Show this help
 
 .PHONY: lint
 lint: submodules ## Validate quadlet syntax (dry-run) and shellcheck the scripts
-	@scripts/lint.sh
+	@hack/lint.sh
 
 .PHONY: generate
 generate: submodules ## Materialize the systemd units quadlet would generate, into .generated/
-	@scripts/generate.sh
+	@hack/generate.sh
 
 .PHONY: install
 install: submodules lint ## Install quadlet units + env templates for the current user, enable services
-	@scripts/install.sh
+	@hack/install.sh
+
+.PHONY: install-local
+install-local: submodules ## Install home/bin/* to ~/.local/bin (0744), home/lib/* to ~/.local/lib/mcp-quadlets (0644)
+	@hack/install-local.sh
 
 .PHONY: uninstall
 uninstall: submodules ## Stop, disable, and remove the installed quadlet units (keeps env secrets)
-	@scripts/uninstall.sh
+	@hack/uninstall.sh
 
 .PHONY: uninstall-purge
 uninstall-purge: submodules ## Like uninstall, but also deletes env files (secrets) and this repo's podman containers/networks
-	@scripts/uninstall.sh --purge
+	@hack/uninstall.sh --purge
 
 .PHONY: test
 test: submodules ## Run the bats test suite against the make targets

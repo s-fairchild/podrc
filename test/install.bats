@@ -10,10 +10,10 @@ teardown() {
 }
 
 @test "install: copies quadlet units into XDG_CONFIG_HOME/containers/systemd" {
-	run "${REPO_ROOT}/scripts/install.sh"
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp-github.container" ]
+	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/mcp-github.container" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp-kubernetes.container" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp.network" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.image" ]
@@ -21,16 +21,16 @@ teardown() {
 }
 
 @test "install: writes env templates without pre-existing secrets" {
-	run "${REPO_ROOT}/scripts/install.sh"
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env" ]
-	run grep -q 'GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET="github-personal-access-token"' "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env"
+	run grep -q 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env"
 	assert_success
 }
 
-@test "install: mirrors config/mcp-quadlets local config overlay into XDG_CONFIG_HOME/mcp-quadlets" {
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/scripts/install.sh"
+@test "install: mirrors home/config/mcp-quadlets local config overlay into XDG_CONFIG_HOME/mcp-quadlets" {
+	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	[ -f "${XDG_CONFIG_HOME}/mcp-quadlets/etc/mcp-kubernetes-server/config.toml" ]
@@ -38,11 +38,11 @@ teardown() {
 }
 
 @test "install: local config overlay always overwrites (not a one-shot template)" {
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" "${REPO_ROOT}/scripts/install.sh"
+	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" "${REPO_ROOT}/hack/install.sh"
 	dest="${XDG_CONFIG_HOME}/mcp-quadlets/etc/mcp-kubernetes-server/config.toml"
 	echo "log_level = 1" >"${dest}"
 
-	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/scripts/install.sh"
+	MCP_QUADLETS_CONFIG_DIR="${FIXTURES_DIR}/mcp-quadlets-config" run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	run grep -q "log_level = 6" "${dest}"
@@ -50,11 +50,11 @@ teardown() {
 }
 
 @test "install: never overwrites an existing env file" {
-	"${REPO_ROOT}/scripts/install.sh"
+	"${REPO_ROOT}/hack/install.sh"
 	env_file="${XDG_CONFIG_HOME}/mcp-quadlets/mcp-github-systemd.env"
-	echo 'GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET="real-secret-name"' >"${env_file}"
+	echo 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="real-secret-name"' >"${env_file}"
 
-	run "${REPO_ROOT}/scripts/install.sh"
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	run grep -q "real-secret-name" "${env_file}"
@@ -62,7 +62,7 @@ teardown() {
 }
 
 @test "install: reloads the user systemd manager (quadlet auto-enables via its own [Install])" {
-	run "${REPO_ROOT}/scripts/install.sh"
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
 	run grep -qx -- "--user daemon-reload" "${SYSTEMCTL_STUB_LOG}"

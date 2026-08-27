@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Materialize the systemd unit files quadlet would generate from
-# config/containers/systemd/, writing them to .generated/ for inspection
-# (e.g. to eyeball the resulting ExecStart before installing). Does not
-# touch any real systemd search path.
+# home/config/containers/systemd/, writing them to .generated/ for
+# inspection (e.g. to eyeball the resulting ExecStart before installing).
+# Does not touch any real systemd search path.
 #
-# Usage: scripts/generate.sh
+# Usage: hack/generate.sh
 
 set -euo pipefail
 

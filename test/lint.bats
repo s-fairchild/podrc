@@ -5,13 +5,13 @@ setup() {
 }
 
 @test "lint: passes on the repo's real quadlet units" {
-	run "${REPO_ROOT}/scripts/lint.sh"
+	run "${REPO_ROOT}/hack/lint.sh"
 	assert_success
 	assert_output --partial "OK: all quadlet units parsed cleanly"
 }
 
 @test "lint: fails on a quadlet unit with an unsupported key" {
-	QUADLET_SRC_DIR="${FIXTURES_DIR}/bad-quadlets" run "${REPO_ROOT}/scripts/lint.sh"
+	QUADLET_SRC_DIR="${FIXTURES_DIR}/bad-quadlets" run "${REPO_ROOT}/hack/lint.sh"
 	assert_failure
 }
 

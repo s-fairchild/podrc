@@ -3,7 +3,7 @@
 # and podman volumes/secrets in place unless --purge is given, which also
 # removes podman containers and networks created from this repo's units.
 #
-# Usage: scripts/uninstall.sh [--purge]
+# Usage: hack/uninstall.sh [--purge]
 
 set -euo pipefail
 
@@ -52,9 +52,11 @@ remove_units() {
 
 # purge_podman_resources
 #
-# Removes podman containers (running or stopped) and networks created
-# from this repo's quadlet units. Leaves volumes and secrets untouched --
-# those can hold data/credentials the user wants to keep across a purge.
+# Removes podman containers (running or stopped) created from this
+# repo's quadlet units. Leaves volumes and secrets untouched -- those can
+# hold data/credentials the user wants to keep across a purge. Networks
+# are handled separately by stop_network_units, since Quadlet deletes
+# them itself on stop rather than needing a manual `podman network rm`.
 purge_podman_resources() {
   local -a containers=()
   mapfile -t containers < <(quadlet_container_names)
@@ -62,13 +64,27 @@ purge_podman_resources() {
     log_info "--purge: removing podman containers: ${containers[*]}"
     podman rm --force "${containers[@]}" >/dev/null 2>&1 || true
   fi
+}
 
-  local -a networks=()
-  mapfile -t networks < <(quadlet_network_names)
-  if (( ${#networks[@]} > 0 )); then
-    log_info "--purge: removing podman networks: ${networks[*]}"
-    podman network rm "${networks[@]}" >/dev/null 2>&1 || true
+# stop_network_units
+#
+# Stops the systemd service(s) Quadlet generates from this repo's
+# *.network units, once every container service depending on them is
+# already stopped (see stop_units). Each unit sets
+# NetworkDeleteOnStop=true, so stopping it also deletes the underlying
+# podman network -- no manual `podman network rm` needed, and no stale
+# "active" service left behind that would otherwise need a restart after
+# the next `make install` recreates the network.
+stop_network_units() {
+  local -a services=()
+  mapfile -t services < <(network_service_names)
+
+  if (( ${#services[@]} == 0 )); then
+    return 0
   fi
+
+  log_info "--purge: stopping network units (deletes the podman network): ${services[*]}"
+  systemctl --user stop "${services[@]}" 2>/dev/null || true
 }
 
 # purge_env env_dir
@@ -99,6 +115,7 @@ main() {
 
   if (( purge )); then
     purge_podman_resources
+    stop_network_units
     purge_env "${env_dir}"
   fi
 

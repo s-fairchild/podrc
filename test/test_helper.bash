@@ -29,11 +29,12 @@ setup_sandbox() {
 
     # Point install.sh's local-config overlay at a directory that doesn't
     # exist by default, instead of leaving it to fall back to this repo's
-    # own real config/mcp-quadlets/ (git-ignored, may hold the developer's
-    # real filled-in env/config files). install_local_config() no-ops when
-    # its source dir is missing, so tests that don't care about the
-    # overlay feature get a clean install; tests 3/4 in install.bats that
-    # do exercise it override this per-command with FIXTURES_DIR instead.
+    # own real home/config/mcp-quadlets/ (git-ignored, may hold the
+    # developer's real filled-in env/config files). install_local_config()
+    # no-ops when its source dir is missing, so tests that don't care
+    # about the overlay feature get a clean install; tests 3/4 in
+    # install.bats that do exercise it override this per-command with
+    # FIXTURES_DIR instead.
     export MCP_QUADLETS_CONFIG_DIR="${SANDBOX_DIR}/unused-mcp-quadlets-config"
 }
 

@@ -3,7 +3,7 @@
 # and register them with systemd --user. Never overwrites an existing
 # env file, since those hold secrets once filled in.
 #
-# Usage: scripts/install.sh
+# Usage: hack/install.sh
 
 set -euo pipefail
 
@@ -58,9 +58,9 @@ install_env_templates() {
 
 # install_local_config env_dir
 #
-# Mirrors MCP_QUADLETS_CONFIG_DIR (config/mcp-quadlets/) into env_dir,
+# Mirrors MCP_QUADLETS_CONFIG_DIR (home/config/mcp-quadlets/) into env_dir,
 # preserving its directory layout -- e.g.
-# config/mcp-quadlets/etc/mcp-kubernetes-server/{config.toml,conf.d/*.toml}
+# home/config/mcp-quadlets/etc/mcp-kubernetes-server/{config.toml,conf.d/*.toml}
 # lands at env_dir/etc/mcp-kubernetes-server/. Unlike
 # install_env_templates, this always overwrites: these aren't one-shot
 # templates, they're the user's real, git-ignored files, edited directly
@@ -71,7 +71,7 @@ install_local_config() {
 
   [[ -d "${MCP_QUADLETS_CONFIG_DIR}" ]] || return 0
 
-  local msg="installing local config overlay from config/mcp-quadlets "
+  local msg="installing local config overlay from home/config/mcp-quadlets "
   msg+="to ${env_dir}"
   log_info "${msg}"
 
@@ -123,14 +123,17 @@ print_next_steps() {
 Next steps:
   1. Edit ${env_dir}/*.env with real credentials.
   2. Drop your kubernetes-mcp-server config.toml and conf.d/*.toml files
-     into config/mcp-quadlets/etc/mcp-kubernetes-server/ (git-ignored) and
-     re-run this install to sync them to
+     into home/config/mcp-quadlets/etc/mcp-kubernetes-server/ (git-ignored)
+     and re-run this install to sync them to
      ${env_dir}/etc/mcp-kubernetes-server/.
-  3. Resolve the TODO(verify) notes in ${config_dir}/mcp-github.container
-     and mcp-kubernetes.container (transport flags, kubernetes image).
+  3. Resolve the TODO(verify) notes in ${config_dir}/mcp-kubernetes.container
+     (transport flags, kubernetes image).
   4. systemctl --user start ${services[*]}
   5. So these keep running after you log out, and start again on boot:
      loginctl enable-linger "\$USER"
+  6. Run 'make install-local' to install home/bin/*, home/lib/* to
+     ~/.local/bin, ~/.local/lib/mcp-quadlets -- separate from this target
+     since those aren't systemd-managed.
 EOF
 }
 
