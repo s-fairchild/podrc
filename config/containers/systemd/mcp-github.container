@@ -20,24 +20,30 @@ Requires=mcp-network.service
 Wants=network-online.target
 
 [Service]
-EnvironmentFile=%h/.config/mcp-quadlets/mcp-github-systemd.env
-ExecStartPre=/bin/sh -c '[ -n "${GITHUB_PERSONAL_ACCESS_TOKEN}" ] || { echo "GITHUB_PERSONAL_ACCESS_TOKEN is not set" >&2; exit 1; }'
+EnvironmentFile=%h/.config/mcp-quadlets/%N-systemd.env
+ExecStartPre=/bin/sh -c '[ -n "${GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET}" ] || { echo "GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET is not set" >&2; exit 1; }'
+ExecStartPre=/bin/sh -c '[ -n "${PORT}" ] || { echo "PORT is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c "podman secret exists ${GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET}"
 
 [Container]
 Image=github-mcp-server.image
-ContainerName=mcp-github
+ContainerName=%N
 Network=mcp.network
-PublishPort=127.0.0.1:8081:8081
+PublishPort=${PUBLISH_ADDRESS}:${PORT}:${PORT}
 Secret=${GITHUB_PERSONAL_ACCESS_TOKEN_PODMAN_SECRET},type=env,target=GITHUB_PERSONAL_ACCESS_TOKEN
-EnvironmentFile=-%h/.config/mcp-quadlets/mcp-github.env
-Exec=--transport sse \
-     --host 0.0.0.0 \
-     --port 8081
+EnvironmentFile=-%h/.config/mcp-quadlets/%N.env
+Exec=http \
+     --listen-host 0.0.0.0 \
+     --base-path ${BASE_PATH} \
+     --base-url ${BASE_URL} \
+     --port ${PORT}
 AutoUpdate=registry
-HealthCmd=CMD-SHELL curl -sf http://localhost:8081/healthz || exit 1
+HealthCmd=CMD-SHELL curl -sf http://localhost:${PORT}/healthz || exit 1
 HealthInterval=30s
 HealthRetries=3
+Label=claude
+Label=claude-code
+Label=mcp-servers
 
 [Service]
 Restart=on-failure

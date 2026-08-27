@@ -45,21 +45,16 @@ ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_TARGET}
 
 [Container]
 Image=kubernetes-mcp-server.image
-ContainerName=mcp-kubernetes
+ContainerName=%N
 Network=mcp.network
 PublishPort=127.0.0.1:8082:8082
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,target=${KUBECONFIG_PODMAN_SECRET_TARGET},uid=65532,gid=65532,mode=0400
 Volume=%h/.config/mcp-quadlets/etc/mcp-kubernetes-server:/etc/kubernetes-mcp-server:ro,Z
 EnvironmentFile=%h/.config/mcp-quadlets/mcp-kubernetes.env
-Exec=--bind-address ${BIND_ADDRESS} \
-     --cluster-provider kubeconfig \
+Exec=--cluster-provider kubeconfig \
      --config /etc/kubernetes-mcp-server/config.toml \
-     --config-dir /etc/kubernetes-mcp-server/conf.d \
-     --kubeconfig ${KUBECONFIG_PODMAN_SECRET_TARGET} \
      --log-file stderr \
-     --log-level ${LOG_LEVEL} \
-     --port ${PORT} \
-     --stateless
+     --log-level ${LOG_LEVEL}
 AutoUpdate=registry
 HealthCmd=CMD-SHELL curl -sf http://localhost:8082/healthz || exit 1
 HealthInterval=30s

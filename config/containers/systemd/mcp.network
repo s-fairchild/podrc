@@ -7,5 +7,22 @@
 [Unit]
 Description=Shared network for MCP servers
 
+[Service]
+EnvironmentFile=-%h/.config/mcp-quadlets/%N-systemd.env
+EnvironmentFile=%h/.config/mcp-quadlets/mcp-podman-global-systemd.env
+ExecStartPre=/bin/sh -c '[ -n "${PODMAN_LOG_LEVEL}" ] || { echo "PODMAN_LOG_LEVEL is not set" >&2; exit 1; }'
+
 [Network]
 NetworkName=mcp
+IPAMDriver=dhcp
+Subnet=10.80.0.0/28
+IPRange=10.80.0.0/28
+# IPRange=10.80.0.1-10.80.0.14
+GlobalArgs=--log-level=${PODMAN_LOG_LEVEL}
+Gateway=10.80.0.1
+DNS=10.80.0.1
+IPv6=false
+NetworkDeleteOnStop=true
+Label=claude
+Label=claude-code
+Label=mcp-servers
