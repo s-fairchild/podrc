@@ -13,4 +13,4 @@
 # throughout this repo's quadlet units), expanded by systemd itself, not
 # a shell.
 
-XDG_CONFIG_HOME=%h/.config
+#XDG_CONFIG_HOME=%h/.config
