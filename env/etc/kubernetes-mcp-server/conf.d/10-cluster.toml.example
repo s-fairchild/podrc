@@ -18,12 +18,8 @@
 #
 # Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#kubernetes-connection
 
-cluster_provider_strategy = kubeconfig
-
-#############################
-### Kubernetes Connection ###
-#############################
-#
-# Reference: https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#kubernetes-connection
 
 cluster_provider_strategy = kubeconfig
+
+# Update this if your kubeconfig secret name differs
+kubeconfig = /run/secrets/mcp-kubernetes-kubeconfig

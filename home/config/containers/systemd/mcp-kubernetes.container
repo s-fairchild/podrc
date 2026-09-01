@@ -30,16 +30,14 @@ Wants=network-online.target
 [Service]
 EnvironmentFile=%h/.config/mcpod/mcp-kubernetes-systemd.env
 ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
-ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_TARGET}" ] || { echo "KUBECONFIG_PODMAN_SECRET_TARGET is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
-ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_TARGET} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_TARGET} does not exist." >&2; exit 1; }'
 
 [Container]
 Image=kubernetes-mcp-server.image
 ContainerName=%N
 Network=mcp.network
 PublishPort=127.0.0.1:8082:8082
-Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,target=${KUBECONFIG_PODMAN_SECRET_TARGET},uid=65532,gid=65532,mode=0400
+Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
 Volume=%h/.config/mcpod/etc/mcp-kubernetes-server:/etc/kubernetes-mcp-server:ro,Z
 EnvironmentFile=%h/.config/mcpod/mcp-kubernetes.env
 Exec=--cluster-provider kubeconfig \
