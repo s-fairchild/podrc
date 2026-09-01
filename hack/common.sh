@@ -16,6 +16,13 @@ set -euo pipefail
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, e.g. mcp-kubernetes.env.example or
 #                     mcp-kubernetes.toml.example
+#   ENVIRONMENT_D_EXAMPLE_DIR - env/environment.d/*.example templates
+#                     copied by install-session-env.sh into
+#                     $XDG_CONFIG_HOME/environment.d/, e.g. mcpod.conf.example
+#                     -- separate from ENV_EXAMPLE_DIR because these land in
+#                     environment.d/, not mcpod/, and are read by
+#                     systemd --user's environment.d generator, not
+#                     EnvironmentFile=
 #   MCPOD_CONFIG_DIR - home/config/mcpod/, a literal mirror of
 #                     $XDG_CONFIG_HOME/mcpod/ (like QUADLET_SRC_DIR
 #                     is for containers/systemd/) holding real,
@@ -53,6 +60,8 @@ readonly QUADLET_UNIT_SUFFIXES=(
 )
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
+# shellcheck disable=SC2034 # consumed by scripts that source this file
+readonly ENVIRONMENT_D_EXAMPLE_DIR="${REPO_ROOT}/env/environment.d"
 MCPOD_CONFIG_DIR="${MCPOD_CONFIG_DIR:-${REPO_ROOT}/home/config/mcpod}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly MCPOD_CONFIG_DIR
@@ -133,6 +142,10 @@ install_env_dir() {
     echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
 }
 
+install_environment_d_dir() {
+    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
+}
+
 install_bin_dir() {
     echo "${HOME}/.local/bin"
 }
@@ -181,7 +194,7 @@ list_quadlet_units() {
 # container_service_names
 #
 # Prints the systemd service name Quadlet generates for each *.container
-# unit in QUADLET_SRC_DIR (mcp-github.container -> mcp-github.service),
+# unit in QUADLET_SRC_DIR (mcp-kubernetes.container -> mcp-kubernetes.service),
 # one per line. install.sh/uninstall.sh derive which services to
 # start/stop from this instead of a hardcoded mcp-*.service list.
 container_service_names() {

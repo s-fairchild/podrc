@@ -1,0 +1,16 @@
+# Copy to $XDG_CONFIG_HOME/environment.d/mcpod.conf (make
+# install-session-env does this automatically if the destination doesn't
+# already exist) to set XDG_CONFIG_HOME session-wide, read by
+# systemd --user's environment.d generator (environment.d(5)) at session
+# start -- not just interactive shells, but GUI apps and every
+# systemd --user service in the session. Takes effect on next login (or
+# `systemctl --user daemon-reexec`).
+#
+# Commented out by default: ~/.config is already the fallback this repo's
+# own hack/ scripts and installed units use when XDG_CONFIG_HOME is unset,
+# so there's nothing to do unless you want it somewhere else. %h is the
+# systemd specifier for the invoking user's home directory (same one used
+# throughout this repo's quadlet units), expanded by systemd itself, not
+# a shell.
+
+XDG_CONFIG_HOME=%h/.config

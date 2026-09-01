@@ -34,7 +34,9 @@ mcpod/
 │   ├── mcp-github-systemd.env.example
 │   ├── mcp-kubernetes.env.example
 │   ├── mcp-kubernetes-systemd.env.example
-│   └── mcp-kubernetes.toml.example
+│   ├── mcp-kubernetes.toml.example
+│   └── environment.d/                -> ~/.config/environment.d/* (opt-in, see below)
+│       └── mcpod.conf.example
 ├── hack/                             lint/generate/install/install-local/uninstall, called by the Makefile
 ├── test/                             bats test suite for the Makefile targets
 │   └── vendor/                       bats-core, bats-support, bats-assert (git submodules)
@@ -102,6 +104,12 @@ make uninstall  # stop, disable, and remove the installed units;
 make uninstall-purge  # uninstall, and also delete the env files and
                        # remove this repo's podman containers/networks
                        # (volumes and secrets are left alone)
+make install-session-env    # opt-in: write the XDG_CONFIG_HOME
+                             # environment.d template to
+                             # ~/.config/environment.d (skipping it if it
+                             # already exists) -- see "Session-wide
+                             # XDG_CONFIG_HOME" below
+make uninstall-session-env  # remove the template install-session-env wrote
 make test       # run the bats suite against all of the above
 ```
 
@@ -109,7 +117,8 @@ make test       # run the bats suite against all of the above
 `home/config/containers/systemd/` via the `QUADLET_UNIT_DIRS` environment
 variable it supports for exactly this purpose — they never read from or
 write to your real `~/.config/containers/systemd`. Only `make install` /
-`make uninstall` / `make install-local` touch real paths, and only under
+`make uninstall` / `make install-local` / `make install-session-env` /
+`make uninstall-session-env` touch real paths, and only under
 `$XDG_CONFIG_HOME` / `~/.local`.
 
 ### First real install
@@ -174,6 +183,29 @@ community images to run) depends on the specific image version — check
 itself lives in `kubernetes-mcp-server.image`; update `Image=` there and
 `Exec=` in `mcp-kubernetes.container` to match what you find, then
 re-run `make lint`.
+
+## Session-wide XDG_CONFIG_HOME (optional)
+
+Everything in this repo already falls back to `~/.config` on its own when
+`XDG_CONFIG_HOME` is unset (`hack/common.sh`'s `install_env_dir()` and
+friends, and the Quadlet units via `%h`), so there's nothing to configure
+if that default is fine. If you *do* set `XDG_CONFIG_HOME` somewhere else,
+setting it only in your shell's profile (`~/.bashrc`, `~/.bash_profile`)
+covers interactive shells but not GUI apps, `systemctl --user` services,
+or anything else started outside a login shell — they'd still see
+`~/.config`.
+
+`make install-session-env` covers that gap: it writes
+`env/environment.d/mcpod.conf.example` to
+`~/.config/environment.d/mcpod.conf` (skipping it if that destination
+already exists, same skip-if-exists behavior as the `env/*.example`
+templates `make install` writes). Uncomment its `XDG_CONFIG_HOME=` line
+and edit the value, then log out and back in (or run
+`systemctl --user daemon-reexec`) for systemd --user's environment.d
+generator (`environment.d(5)`) to pick it up — at that point it applies
+session-wide, not just to shells. `make uninstall-session-env` removes it
+again. Neither target is part of `make install`/`make uninstall`, since
+nothing else here depends on it.
 
 ## Configuring each server
 

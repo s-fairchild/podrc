@@ -24,6 +24,14 @@ install: submodules lint ## Install quadlet units + env templates for the curren
 install-local: submodules ## Install home/bin/* to ~/.local/bin (0744), home/lib/* to ~/.local/lib/mcpod (0644)
 	@hack/install-local.sh
 
+.PHONY: install-session-env
+install-session-env: submodules ## Install the opt-in XDG_CONFIG_HOME environment.d template (session-wide, not just shells)
+	@hack/install-session-env.sh
+
+.PHONY: uninstall-session-env
+uninstall-session-env: submodules ## Remove the environment.d template installed by install-session-env
+	@hack/uninstall-session-env.sh
+
 .PHONY: uninstall
 uninstall: submodules ## Stop, disable, and remove the installed quadlet units (keeps env secrets)
 	@hack/uninstall.sh

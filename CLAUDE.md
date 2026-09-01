@@ -33,6 +33,10 @@ make install-local    # install home/bin/* to ~/.local/bin (0744) and home/lib/*
                        # so this is separate from `make install`
 make uninstall        # stop, disable, remove installed units; env secrets kept
 make uninstall-purge  # uninstall, and also delete the env files
+make install-session-env    # opt-in: write the XDG_CONFIG_HOME environment.d
+                             # template to ~/.config/environment.d (skipped if
+                             # it already exists); not part of `make install`
+make uninstall-session-env  # remove the template install-session-env wrote
 make test             # fetch submodules if needed, then run the full bats suite
 make clean            # remove .generated/
 make distclean        # clean + deinit vendored submodules
@@ -103,13 +107,28 @@ in `hack/install.sh` globs `*.example` generically (not `*.env.example`)
 specifically so this kind of file gets picked up too — keep that in mind
 if adding a new template that isn't a `.env` file.
 
+**`env/environment.d/*.example` is a third, separate template path**,
+parallel to `env/*.example` but for a different destination and reader:
+`env/environment.d/mcpod.conf.example` installs (same skip-if-exists rule)
+to `~/.config/environment.d/mcpod.conf`, read by systemd --user's
+environment.d generator (`environment.d(5)`) at session start, not by any
+Quadlet unit's `EnvironmentFile=`. It's opt-in and unrelated to running the
+MCP servers — everything else in this repo already falls back to
+`~/.config` on its own when `XDG_CONFIG_HOME` is unset — so it has its own
+scripts/make targets (`hack/install-session-env.sh` /
+`hack/uninstall-session-env.sh`, `make install-session-env` /
+`make uninstall-session-env`) instead of being folded into
+`install.sh`/`uninstall.sh`. See README.md "Session-wide XDG_CONFIG_HOME".
+
 **`hack/common.sh`** is sourced (not executed) by every other script in
 `hack/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
 `QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`,
-`MCPOD_CONFIG_DIR`, `HOME_BIN_SRC_DIR`, `HOME_LIB_SRC_DIR`, and the
-functions `init_logging()`, `resolve_quadlet_bin()`, `install_config_dir()`,
-`install_env_dir()`, `install_bin_dir()`, `install_lib_dir()`, plus a set of
-quadlet-unit-introspection helpers that derive service/container/network
+`ENVIRONMENT_D_EXAMPLE_DIR`, `MCPOD_CONFIG_DIR`, `HOME_BIN_SRC_DIR`,
+`HOME_LIB_SRC_DIR`, and the functions `init_logging()`,
+`resolve_quadlet_bin()`, `install_config_dir()`, `install_env_dir()`,
+`install_environment_d_dir()`, `install_bin_dir()`, `install_lib_dir()`,
+plus a set of quadlet-unit-introspection helpers that derive
+service/container/network
 names from the unit files themselves instead of hardcoding them:
 `list_quadlet_units()` (every unit file matching `QUADLET_UNIT_SUFFIXES` in
 `QUADLET_SRC_DIR`), `container_service_names()` (the `<name>.service`
@@ -141,7 +160,9 @@ this purpose) and dry-run into a throwaway/`.generated` dir. Only
 `install.sh` and `uninstall.sh` write to real paths, and only under
 `$XDG_CONFIG_HOME` — never as root, never outside the user's own config.
 `install-local.sh` writes to `~/.local/bin` and
-`~/.local/lib/mcpod` — also never as root.
+`~/.local/lib/mcpod` — also never as root. `install-session-env.sh` /
+`uninstall-session-env.sh` write to `$XDG_CONFIG_HOME/environment.d` —
+same real-path caveat, and likewise never as root.
 
 **Test isolation (`test/test_helper.bash`)**: `setup_sandbox` redirects
 `HOME`/`XDG_CONFIG_HOME` into a `mktemp -d` sandbox and prepends

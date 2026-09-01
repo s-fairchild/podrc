@@ -3,15 +3,6 @@
 # Installed to $XDG_CONFIG_HOME/containers/systemd/mcp-kubernetes.container
 # Quadlet generates mcp-kubernetes.service from this file.
 #
-# TODO(verify): the image pulled by kubernetes-mcp-server.image is a
-# placeholder. Several "kubernetes-mcp-server" projects exist with
-# different registries/images and flags; pick the one you intend to run
-# and update Image= in that .image file and Exec= below to match its
-# actual CLI (`--help` output), including its HTTP/SSE transport flag for
-# persistent operation as a systemd service (see mcp-github.container's
-# TODO and README.md "Transport caveat" for why stdio-only images don't
-# fit this deployment model).
-#
 # The container needs read access to a kubeconfig for whichever cluster
 # it should manage. Point KUBECONFIG (in mcp-kubernetes.env) at the
 # in-container path below, and swap the source path in Volume= for your
