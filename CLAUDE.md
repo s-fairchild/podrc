@@ -19,7 +19,7 @@ and bats tests.
 ```bash
 git submodule update --init --recursive   # or: make submodules — required once after cloning
 
-make lint             # shellcheck hack/*.sh + home/bin/*.sh + home/lib/*.sh, and
+make lint             # shellcheck hack/*.sh + home/bin/* + home/lib/*, and
                        # dry-run every quadlet unit through the local `quadlet`
                        # binary (no real systemd paths touched)
 make generate         # materialize the systemd units quadlet would produce into
@@ -63,8 +63,10 @@ install/uninstall harness that operates *on* `home/`, never installed
 itself, always run from the repo checkout.
 
 **`home/bin/` vs `home/lib/`.** `home/bin/*` are standalone, directly
-executable entry points (installed mode `0744` by `make install-local`) —
-currently just `mcp-github-stdio.sh`. `home/lib/*` (currently empty, kept
+executable entry points (installed mode `0744` by `make install-local`),
+deliberately named without a `.sh` suffix since they're meant to be run
+as plain commands once on `PATH` (`mcp-github-stdio`,
+`mcp-kubernetes-kubeconfig-secret`). `home/lib/*` (currently empty, kept
 via `.gitkeep`) is for library code a `home/bin/` script sources rather
 than runs — installed mode `0644` (never executable) to
 `~/.local/lib/mcpod`, one level below a plain `~/.local/lib/<file>`
@@ -118,9 +120,9 @@ creates per `*.container`/`*.network` unit -- its `ContainerName=`/
 `quadlet_unit_value()` / `resolve_unit_specifiers()` helpers those two use
 to read a unit's `key=value` lines and expand the `%N` systemd specifier.
 New scripts should source `common.sh` the same way rather than recomputing
-any of this — this applies to `hack/*.sh` only; `home/bin/*.sh` scripts
+any of this — this applies to `hack/*.sh` only; `home/bin/*` scripts
 deliberately don't (see the stdio-purity note in
-`home/bin/mcp-github-stdio.sh`).
+`home/bin/mcp-github-stdio`).
 
 **`vendor/bash-logger`** (git submodule, `git@github.com:s-fairchild/bash-logger.git`)
 provides the `log_debug`/`log_info`/`log_warn`/`log_error`/... functions
@@ -185,7 +187,7 @@ Kubernetes server's real flag is `--port` (Streamable HTTP), not the
 **`github-mcp-server` doesn't have this problem, and isn't Quadlet-managed
 at all.** It only supports the `stdio` transport (confirmed against
 upstream — no self-hosted HTTP/SSE mode exists; GitHub's own hosted
-`api.githubcopilot.com` endpoint is unrelated). `home/bin/mcp-github-stdio.sh`
+`api.githubcopilot.com` endpoint is unrelated). `home/bin/mcp-github-stdio`
 is what actually runs it: an MCP client's stdio "command" points at that
 script directly, which resolves the installed env files under
 `~/.config/mcpod/` and `exec`s `podman run -i --rm ...
@@ -200,16 +202,16 @@ and why `mcp-github.container` was removed rather than kept
   `BASH_SOURCE`, otherwise Google's Shell Style Guide
   (https://google.github.io/styleguide/shellguide.html) -- the Makefile
   itself still requires literal tabs for recipe lines, but that's a `make`
-  syntax requirement, not a `hack/*.sh`/`home/bin/*.sh` convention.
+  syntax requirement, not a `hack/*.sh`/`home/bin/*` convention.
   Indentation is 4 spaces in `hack/*.sh`, but still 2 spaces (Google's own
-  guideline) in `home/bin/*.sh`/`home/lib/*.sh` -- match whichever tree
+  guideline) in `home/bin/*`/`home/lib/*.sh` -- match whichever tree
   you're editing.
 - Every directly-run script in `hack/` puts its logic in functions and
   calls a `main "$@"` at the bottom; `hack/common.sh` is a library (only
-  sourced) and has no `main`. `home/bin/*.sh` scripts follow the same
+  sourced) and has no `main`. `home/bin/*` scripts follow the same
   function/`main` shape but deliberately don't source `hack/common.sh` —
   they're installed and run standalone on a machine that may not have
-  this repo checked out, and (for `mcp-github-stdio.sh` specifically)
+  this repo checked out, and (for `mcp-github-stdio` specifically)
   can't risk `bash-logger`'s default stdout logging corrupting an MCP
   stdio stream.
 - Global variables are kept to a minimum and marked `readonly` once
@@ -220,7 +222,7 @@ and why `mcp-github.container` was removed rather than kept
   `echo`/`cat` stays for actual function return values (e.g.
   `resolve_quadlet_bin`) and for human-facing instructional text not meant
   to look like a log line (e.g. `install.sh`'s "Next steps" block). This is
-  a `hack/` convention only — `home/bin/*.sh` scripts avoid the logger
+  a `hack/` convention only — `home/bin/*` scripts avoid the logger
   entirely (see above) and write diagnostics straight to stderr with `echo`.
 - Quadlet units use `%h` for the invoking user's home directory
   (systemd specifier), not `$HOME`.

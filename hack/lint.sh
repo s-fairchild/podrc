@@ -13,10 +13,13 @@ source "${SCRIPT_DIR}/common.sh"
 
 # run_shellcheck
 #
-# Runs shellcheck over hack/*.sh, home/bin/*.sh, and home/lib/*.sh (the
-# latter two if any exist yet) if available; warns and skips otherwise.
+# Runs shellcheck over hack/*.sh, home/bin/*, and home/lib/* (the latter
+# two if any exist yet) if available; warns and skips otherwise. home/bin/
+# entry points deliberately carry no file extension, so their files are
+# discovered the same way install-local.sh discovers what to install
+# (list_dir_files), not by a *.sh glob.
 run_shellcheck() {
-    log_info "shellcheck hack/*.sh home/bin/*.sh home/lib/*.sh"
+    log_info "shellcheck hack/*.sh home/bin/* home/lib/*"
 
     if ! command -v shellcheck >/dev/null 2>&1; then
         log_fatal "failed to lint shell scripts: shellcheck not installed."
@@ -24,9 +27,12 @@ run_shellcheck() {
     fi
 
     local -a targets=("${SCRIPT_DIR}"/*.sh)
-    shopt -s nullglob
-    targets+=("${HOME_BIN_SRC_DIR}"/*.sh "${HOME_LIB_SRC_DIR}"/*.sh)
-    shopt -u nullglob
+    local -a home_targets=()
+    mapfile -t home_targets < <(
+        list_dir_files "${HOME_BIN_SRC_DIR}"
+        list_dir_files "${HOME_LIB_SRC_DIR}"
+    )
+    targets+=("${home_targets[@]}")
 
     shellcheck -x "${targets[@]}"
 }

@@ -24,16 +24,8 @@ source "${SCRIPT_DIR}/common.sh"
 install_tree() {
     local src_dir="$1" dest_dir="$2" mode="$3" label="$4"
 
-    local -a files=()
-    shopt -s nullglob
-    files=("${src_dir}"/*)
-    shopt -u nullglob
-
     local -a to_install=()
-    local f
-    for f in "${files[@]}"; do
-        [[ -f "${f}" && "$(basename "${f}")" != .* ]] && to_install+=("${f}")
-    done
+    mapfile -t to_install < <(list_dir_files "${src_dir}")
 
     if (( ${#to_install[@]} == 0 )); then
         log_warn "no ${label} files found in ${src_dir}; nothing to install"

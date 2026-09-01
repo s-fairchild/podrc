@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Fake podman for mcp-kubernetes-kubeconfig-secret.bats: records the
+# invocation instead of touching the real podman secret store. Point
+# PODMAN_STUB_LOG at a file before putting this directory ahead of the
+# real podman on PATH. Set PODMAN_STUB_EXIT to make it fail, to exercise
+# the caller's error propagation.
+
+set -euo pipefail
+
+: "${PODMAN_STUB_LOG:?PODMAN_STUB_LOG must be set}"
+printf '%s\n' "$*" >>"${PODMAN_STUB_LOG}"
+
+if [[ -n "${PODMAN_STUB_EXIT:-}" ]]; then
+    exit "${PODMAN_STUB_EXIT}"
+fi

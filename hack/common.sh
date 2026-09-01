@@ -141,6 +141,26 @@ install_lib_dir() {
     echo "${HOME}/.local/lib/mcpod"
 }
 
+# list_dir_files dir
+#
+# Prints the path to every non-hidden regular file directly under dir (no
+# recursion), one per line, or nothing if dir doesn't exist or has none.
+# Used to discover home/bin/*, home/lib/* installables/lint targets
+# without assuming a file extension -- home/bin/* deliberately have none.
+list_dir_files() {
+    local dir="$1"
+
+    local -a entries=()
+    shopt -s nullglob
+    entries=("${dir}"/*)
+    shopt -u nullglob
+
+    local f
+    for f in "${entries[@]}"; do
+        [[ -f "${f}" && "$(basename "${f}")" != .* ]] && printf '%s\n' "${f}"
+    done
+}
+
 # list_quadlet_units
 #
 # Prints the path to every quadlet unit file (one per QUADLET_UNIT_SUFFIXES

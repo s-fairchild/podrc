@@ -9,7 +9,7 @@
 # the MCP protocol channel -- a stray log line there would corrupt it.
 # Diagnostics below go straight to stderr instead.
 #
-# Usage: home/bin/mcp-github-stdio.sh
+# Usage: home/bin/mcp-github-stdio
 
 set -euo pipefail
 
@@ -31,7 +31,7 @@ main() {
   done
 
   # shellcheck source=/dev/null
-  source "${SYSTEMD_ENV_FILE}"
+  . "${SYSTEMD_ENV_FILE}"
   secret_name="${GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET:?GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET is not set in ${SYSTEMD_ENV_FILE}}"
 
   local -ar podman_run_options=(

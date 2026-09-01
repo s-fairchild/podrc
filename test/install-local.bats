@@ -77,7 +77,7 @@ teardown() {
 	run "${REPO_ROOT}/hack/install-local.sh"
 	assert_success
 
-	dest="${HOME}/.local/bin/mcp-github-stdio.sh"
+	dest="${HOME}/.local/bin/mcp-github-stdio"
 	[ -f "${dest}" ]
 	run stat -c '%a' "${dest}"
 	assert_output "744"
