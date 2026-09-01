@@ -16,20 +16,20 @@ source "${SCRIPT_DIR}/common.sh"
 # Disables and stops every mcp-*.service Quadlet generates from this
 # repo's *.container units, ignoring errors if not installed.
 stop_units() {
-  local -a services=()
-  mapfile -t services < <(container_service_names)
+    local -a services=()
+    mapfile -t services < <(container_service_names)
 
-  if (( ${#services[@]} == 0 )); then
-    log_warn "no *.container units found in ${QUADLET_SRC_DIR}; nothing to stop"
-    return 0
-  fi
+    if (( ${#services[@]} == 0 )); then
+        log_warn "no *.container units found in ${QUADLET_SRC_DIR}; nothing to stop"
+        return 0
+    fi
 
-  log_info "stopping and disabling units (ignoring errors if not installed)"
-  systemctl --user \
-    disable \
-    --now \
-    "${services[@]}" \
-    2>/dev/null || true
+    log_info "stopping and disabling units (ignoring errors if not installed)"
+    systemctl --user \
+        disable \
+        --now \
+        "${services[@]}" \
+        2>/dev/null || true
 }
 
 # remove_units config_dir
@@ -37,17 +37,17 @@ stop_units() {
 # Removes every installed quadlet unit file (mirrors install.sh's
 # install_units) from config_dir.
 remove_units() {
-  local config_dir="$1"
+    local config_dir="$1"
 
-  log_info "removing quadlet units from ${config_dir}"
+    log_info "removing quadlet units from ${config_dir}"
 
-  local -a units=()
-  mapfile -t units < <(list_quadlet_units)
+    local -a units=()
+    mapfile -t units < <(list_quadlet_units)
 
-  local unit
-  for unit in "${units[@]}"; do
-    rm -f "${config_dir}/$(basename "${unit}")"
-  done
+    local unit
+    for unit in "${units[@]}"; do
+        rm -f "${config_dir}/$(basename "${unit}")"
+    done
 }
 
 # purge_podman_resources
@@ -58,12 +58,12 @@ remove_units() {
 # are handled separately by stop_network_units, since Quadlet deletes
 # them itself on stop rather than needing a manual `podman network rm`.
 purge_podman_resources() {
-  local -a containers=()
-  mapfile -t containers < <(quadlet_container_names)
-  if (( ${#containers[@]} > 0 )); then
-    log_info "--purge: removing podman containers: ${containers[*]}"
-    podman rm --force "${containers[@]}" >/dev/null 2>&1 || true
-  fi
+    local -a containers=()
+    mapfile -t containers < <(quadlet_container_names)
+    if (( ${#containers[@]} > 0 )); then
+        log_info "--purge: removing podman containers: ${containers[*]}"
+        podman rm --force "${containers[@]}" >/dev/null 2>&1 || true
+    fi
 }
 
 # stop_network_units
@@ -76,51 +76,51 @@ purge_podman_resources() {
 # "active" service left behind that would otherwise need a restart after
 # the next `make install` recreates the network.
 stop_network_units() {
-  local -a services=()
-  mapfile -t services < <(network_service_names)
+    local -a services=()
+    mapfile -t services < <(network_service_names)
 
-  if (( ${#services[@]} == 0 )); then
-    return 0
-  fi
+    if (( ${#services[@]} == 0 )); then
+        return 0
+    fi
 
-  log_info "--purge: stopping network units (deletes the podman network): ${services[*]}"
-  systemctl --user stop "${services[@]}" 2>/dev/null || true
+    log_info "--purge: stopping network units (deletes the podman network): ${services[*]}"
+    systemctl --user stop "${services[@]}" 2>/dev/null || true
 }
 
 # purge_env env_dir
 #
 # Deletes env_dir entirely (secrets included).
 purge_env() {
-  local env_dir="$1"
+    local env_dir="$1"
 
-  log_info "--purge: removing env files (secrets) from ${env_dir}"
-  rm -rf "${env_dir}"
+    log_info "--purge: removing env files (secrets) from ${env_dir}"
+    rm -rf "${env_dir}"
 }
 
 main() {
-  init_logging
+    init_logging
 
-  local purge=0
-  if [[ "${1:-}" == "--purge" ]]; then
-    purge=1
-  fi
+    local purge=0
+    if [[ "${1:-}" == "--purge" ]]; then
+        purge=1
+    fi
 
-  local config_dir
-  config_dir="$(install_config_dir)"
-  local env_dir
-  env_dir="$(install_env_dir)"
+    local config_dir
+    config_dir="$(install_config_dir)"
+    local env_dir
+    env_dir="$(install_env_dir)"
 
-  stop_units
-  remove_units "${config_dir}"
+    stop_units
+    remove_units "${config_dir}"
 
-  if (( purge )); then
-    purge_podman_resources
-    stop_network_units
-    purge_env "${env_dir}"
-  fi
+    if (( purge )); then
+        purge_podman_resources
+        stop_network_units
+        purge_env "${env_dir}"
+    fi
 
-  log_info "systemctl --user daemon-reload"
-  systemctl --user daemon-reload
+    log_info "systemctl --user daemon-reload"
+    systemctl --user daemon-reload
 }
 
 main "$@"

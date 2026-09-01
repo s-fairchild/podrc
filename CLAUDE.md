@@ -197,10 +197,13 @@ and why `mcp-github.container` was removed rather than kept
 ## Conventions
 
 - Shell scripts: `set -euo pipefail`, resolve `SCRIPT_DIR`/`REPO_ROOT` via
-  `BASH_SOURCE`, 2-space indentation per Google's Shell Style Guide
+  `BASH_SOURCE`, otherwise Google's Shell Style Guide
   (https://google.github.io/styleguide/shellguide.html) -- the Makefile
   itself still requires literal tabs for recipe lines, but that's a `make`
   syntax requirement, not a `hack/*.sh`/`home/bin/*.sh` convention.
+  Indentation is 4 spaces in `hack/*.sh`, but still 2 spaces (Google's own
+  guideline) in `home/bin/*.sh`/`home/lib/*.sh` -- match whichever tree
+  you're editing.
 - Every directly-run script in `hack/` puts its logic in functions and
   calls a `main "$@"` at the bottom; `hack/common.sh` is a library (only
   sourced) and has no `main`. `home/bin/*.sh` scripts follow the same
