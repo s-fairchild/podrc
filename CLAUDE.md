@@ -38,7 +38,10 @@ make install-session-env    # opt-in: write the XDG_CONFIG_HOME environment.d
                              # it already exists); not part of `make install`
 make uninstall-session-env  # remove the template install-session-env wrote
 make test             # fetch submodules if needed, then run the full bats suite
-make clean            # remove .generated/
+make coverage         # run the bats suite under kcov, reporting hack/*.sh and
+                       # home/bin/* line coverage as HTML into
+                       # .coverage/<bats.*>/index.html
+make clean            # remove .generated/ and .coverage/
 make distclean        # clean + deinit vendored submodules
 ```
 
@@ -53,6 +56,17 @@ test/vendor/bats-core/bin/bats test/install.bats -f "never overwrites"
 `quadlet` must be present at `/usr/libexec/podman/quadlet` or
 `/usr/lib/podman/quadlet` (Fedora: part of the `podman` package) for
 `lint`/`generate`/`test` to work; override with `QUADLET_BIN=/path/to/quadlet`.
+
+`kcov` must be installed for `make coverage` to work; override with
+`KCOV_BIN=/path/to/kcov`. It's a separate, heavier run than `make test` --
+kcov traces every bash process the bats suite forks, so expect it to take
+noticeably longer than a plain `make test`. Its bash line-tracer is also
+unreliable across forked/exec'd children: `hack/*.sh` is consistently
+covered, but `home/bin/*` scripts (run as subprocesses by e.g.
+`mcp-kubernetes-kubeconfig-secret.bats`) consistently don't show up in
+the report even when the tests exercise and pass them -- a kcov
+limitation, not a real coverage gap. See the comment on `run_coverage()`
+in `hack/coverage.sh` for what was ruled out.
 
 ## Architecture
 

@@ -44,6 +44,10 @@ uninstall-purge: submodules ## Like uninstall, but also deletes env files (secre
 test: submodules ## Run the bats test suite against the make targets
 	@$(BATS) test/*.bats
 
+.PHONY: coverage
+coverage: submodules ## Run the bats suite under kcov, report HTML coverage into .generated/coverage/
+	@hack/coverage.sh
+
 .PHONY: submodules
 submodules: ## Fetch vendored dependencies (bats-core/helpers, bash-logger)
 	@if [ ! -x "$(BATS)" ] || [ ! -f "$(BASH_LOGGER)" ]; then \
@@ -52,7 +56,7 @@ submodules: ## Fetch vendored dependencies (bats-core/helpers, bash-logger)
 
 .PHONY: clean
 clean: ## Remove generated/build artifacts (not installed units)
-	rm -rf .generated
+	rm -rf .generated .coverage
 
 .PHONY: distclean
 distclean: clean ## Also deinitialize vendored submodules

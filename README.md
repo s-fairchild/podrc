@@ -76,6 +76,7 @@ name/suffix.
 - systemd user instance (`systemctl --user`) — normal on any modern
   systemd desktop/server distro
 - `shellcheck` (optional but used by `make lint`)
+- `kcov` (optional but used by `make coverage`; Fedora: `dnf install kcov`)
 - `git` with submodule support, for the vendored test suite
 
 After cloning:
@@ -111,6 +112,8 @@ make install-session-env    # opt-in: write the XDG_CONFIG_HOME
                              # XDG_CONFIG_HOME" below
 make uninstall-session-env  # remove the template install-session-env wrote
 make test       # run the bats suite against all of the above
+make coverage   # run the bats suite under kcov, report line coverage of
+                # hack/*.sh and home/bin/* as HTML into .coverage/
 ```
 
 `make lint` and `make generate` point the `quadlet` binary at this repo's

@@ -1,6 +1,13 @@
 # Build/scratch output from `make generate`.
 /.generated/
 
+# HTML coverage report from `make coverage`. Kept separate from
+# .generated/ because test/generate.bats exercises `make generate`,
+# which rm -rf's .generated/ as part of testing hack/generate.sh --
+# nesting the coverage output there would delete it out from under kcov
+# mid-run.
+/.coverage/
+
 # Real env files with secrets, written by `make install` next to the
 # tracked *.env.example templates. Never commit these.
 /env/*.env
