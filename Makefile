@@ -2,6 +2,8 @@
 
 BATS := test/vendor/bats-core/bin/bats
 BASH_LOGGER := vendor/bash-logger/logging.sh
+NPROC := $(shell nproc 2>/dev/null || echo 1)
+JOBS ?= $(shell [ $(NPROC) -ge 4 ] && echo 4 || echo 1)
 
 .PHONY: help
 help: ## Show this help
@@ -41,8 +43,12 @@ uninstall-purge: submodules ## Like uninstall, but also deletes env files (secre
 	@hack/uninstall.sh --purge
 
 .PHONY: test
-test: submodules ## Run the bats test suite against the make targets
-	@$(BATS) test/*.bats
+test: submodules ## Run the bats test suite against the make targets (JOBS=N for parallel, default 4 if >=4 CPUs; requires GNU parallel)
+	@if [ "$(JOBS)" -gt 1 ]; then \
+		$(BATS) --jobs $(JOBS) test/*.bats; \
+	else \
+		$(BATS) test/*.bats; \
+	fi
 
 .PHONY: coverage
 coverage: submodules ## Run the bats suite under kcov, report HTML coverage into .generated/coverage/
