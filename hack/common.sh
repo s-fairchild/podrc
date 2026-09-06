@@ -11,11 +11,14 @@ set -euo pipefail
 #                     env var so tests can point it at a fixture directory
 #                     instead of home/config/containers/systemd
 #   QUADLET_UNIT_SUFFIXES - quadlet unit file extensions this repo installs/
-#                     removes/inspects, e.g. mcp-kubernetes.container or
+#                     removes/inspects, e.g. kubernetes-mcp-server.container or
 #                     mcp.network
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
-#                     install.sh, e.g. mcp-kubernetes.env.example or
-#                     mcp-kubernetes.toml.example
+#                     install.sh, recursively and preserving relative
+#                     directory structure, e.g. kubernetes-mcp.env.example
+#                     or etc/kubernetes-mcp-server/conf.d/00-base.toml.example
+#                     -- excluding ENVIRONMENT_D_EXAMPLE_DIR, which is
+#                     installed separately (see below)
 #   ENVIRONMENT_D_EXAMPLE_DIR - env/environment.d/*.example templates
 #                     copied by install-session-env.sh into
 #                     $XDG_CONFIG_HOME/environment.d/, e.g. mcpod.conf.example
@@ -23,15 +26,6 @@ set -euo pipefail
 #                     environment.d/, not mcpod/, and are read by
 #                     systemd --user's environment.d generator, not
 #                     EnvironmentFile=
-#   MCPOD_CONFIG_DIR - home/config/mcpod/, a literal mirror of
-#                     $XDG_CONFIG_HOME/mcpod/ (like QUADLET_SRC_DIR
-#                     is for containers/systemd/) holding real,
-#                     git-ignored files the user edits directly in their
-#                     checkout -- e.g. etc/mcp-kubernetes-server/conf.d/
-#                     drop-in *.toml files. install.sh mirrors it in
-#                     whole on every install; see its
-#                     install_local_config(). Overridable via env var so
-#                     tests can point it at a fixture directory.
 #   HOME_BIN_SRC_DIR - home/bin/, installable scripts install-local.sh
 #                     copies into ~/.local/bin (mode 0744). Overridable via
 #                     env var so tests can point it at a fixture directory.
@@ -62,9 +56,6 @@ readonly QUADLET_UNIT_SUFFIXES=(
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENVIRONMENT_D_EXAMPLE_DIR="${REPO_ROOT}/env/environment.d"
-MCPOD_CONFIG_DIR="${MCPOD_CONFIG_DIR:-${REPO_ROOT}/home/config/mcpod}"
-# shellcheck disable=SC2034 # consumed by scripts that source this file
-readonly MCPOD_CONFIG_DIR
 HOME_BIN_SRC_DIR="${HOME_BIN_SRC_DIR:-${REPO_ROOT}/home/bin}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_BIN_SRC_DIR
@@ -194,7 +185,7 @@ list_quadlet_units() {
 # container_service_names
 #
 # Prints the systemd service name Quadlet generates for each *.container
-# unit in QUADLET_SRC_DIR (mcp-kubernetes.container -> mcp-kubernetes.service),
+# unit in QUADLET_SRC_DIR (kubernetes-mcp-server.container -> kubernetes-mcp-server.service),
 # one per line. install.sh/uninstall.sh derive which services to
 # start/stop from this instead of a hardcoded mcp-*.service list.
 container_service_names() {

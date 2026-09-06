@@ -1,3 +1,0 @@
-# Test fixture standing in for a real, git-ignored drop-in under
-# home/config/mcpod/etc/mcp-kubernetes-server/conf.d/.
-read_only = true

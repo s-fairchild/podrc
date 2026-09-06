@@ -14,7 +14,7 @@ teardown() {
 	run "${REPO_ROOT}/hack/uninstall.sh"
 	assert_success
 
-	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/mcp-kubernetes.container" ]
+	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]
 	[ -f "${XDG_CONFIG_HOME}/mcpod/mcp-github.env" ]
 }
 
@@ -22,7 +22,7 @@ teardown() {
 	run "${REPO_ROOT}/hack/uninstall.sh"
 	assert_success
 
-	run grep -q -- "--user disable --now mcp-kubernetes.service" "${SYSTEMCTL_STUB_LOG}"
+	run grep -q -- "--user disable --now kubernetes-mcp-server.service" "${SYSTEMCTL_STUB_LOG}"
 	assert_success
 }
 

@@ -63,7 +63,7 @@ kcov traces every bash process the bats suite forks, so expect it to take
 noticeably longer than a plain `make test`. Its bash line-tracer is also
 unreliable across forked/exec'd children: `hack/*.sh` is consistently
 covered, but `home/bin/*` scripts (run as subprocesses by e.g.
-`mcp-kubernetes-kubeconfig-secret.bats`) consistently don't show up in
+`kubernetes-mcp-kubeconfig-secret.bats`) consistently don't show up in
 the report even when the tests exercise and pass them -- a kcov
 limitation, not a real coverage gap. See the comment on `run_coverage()`
 in `hack/coverage.sh` for what was ruled out.
@@ -84,7 +84,7 @@ itself, always run from the repo checkout.
 executable entry points (installed mode `0744` by `make install-local`),
 deliberately named without a `.sh` suffix since they're meant to be run
 as plain commands once on `PATH` (`mcp-github-stdio`,
-`mcp-kubernetes-kubeconfig-secret`). `home/lib/*` (currently empty, kept
+`kubernetes-mcp-kubeconfig-secret`). `home/lib/*` (currently empty, kept
 via `.gitkeep`) is for library code a `home/bin/` script sources rather
 than runs — installed mode `0644` (never executable) to
 `~/.local/lib/mcpod`, one level below a plain `~/.local/lib/<file>`
@@ -93,12 +93,20 @@ specifically to avoid colliding with other tools' files there. Neither is
 
 **`env/*.example` is a separate, non-mirrored path** — despite the
 directory's name, it holds both env-file and config-file templates (e.g.
-`mcp-kubernetes.toml.example` alongside the `*.env.example` files).
-`make install` copies each to `~/.config/mcpod/<name>` (stripping
-only the `.example` suffix) *only if that destination doesn't already
-exist*, so a reinstall never clobbers a filled-in secret or hand-edited
-config. This is why these templates live outside `home/config/` instead of
-being mirrored — a mirror would tempt clobbering real values on reinstall.
+`env/etc/kubernetes-mcp-server/config.toml.example` and
+`conf.d/*.toml.example` alongside the `*.env.example` files). `make
+install` copies every `*.example` file under `env/` (except
+`env/environment.d/`, installed separately — see below) into
+`~/.config/mcpod/`, recursively and preserving the path relative to
+`env/`, stripping only the `.example` suffix — e.g.
+`env/etc/kubernetes-mcp-server/conf.d/00-base.toml.example` lands at
+`~/.config/mcpod/etc/kubernetes-mcp-server/conf.d/00-base.toml`. It skips
+any destination that already exists, so a reinstall never clobbers a
+filled-in secret or hand-edited config — there's no separate git-ignored
+overlay directory that a reinstall mirrors; the user's real files live
+directly under `~/.config/mcpod/` and are edited there. This is why these
+templates live outside `home/config/` instead of being mirrored — a
+mirror would tempt clobbering real values on reinstall.
 
 **The `-systemd.env` / `-systemd.env.example` suffix marks the `[Service]`
 side of that split.** A plain `<name>.env(.example)` is referenced by
@@ -112,14 +120,16 @@ e.g. a podman secret name interpolated into a `Secret=` line in
 these files still land in the same `~/.config/mcpod/` directory on
 install; only the suffix distinguishes which unit section reads them.
 
-**A non-`.env` template (e.g. `mcp-kubernetes.toml.example`) is neither of
-those** — it's not `EnvironmentFile=`'d in at all. It's bind-mounted
-straight into the container by a `Volume=` line in the `.container` unit,
-at the in-container path its sibling `-systemd.env` file points the
-relevant flag (e.g. `CONFIG` → `--config`) at. `install_env_templates()`
-in `hack/install.sh` globs `*.example` generically (not `*.env.example`)
-specifically so this kind of file gets picked up too — keep that in mind
-if adding a new template that isn't a `.env` file.
+**A non-`.env` template (e.g. `env/etc/kubernetes-mcp-server/config.toml.example`)
+is neither of those** — it's not `EnvironmentFile=`'d in at all. Its whole
+installed directory is bind-mounted straight into the container by a
+`Volume=` line in the `.container` unit, at the in-container path its
+sibling `-systemd.env`/`Exec=` config points the relevant flag (e.g.
+`--config`) at. `install_env_templates()` in `hack/install.sh` finds
+`*.example` recursively under `ENV_EXAMPLE_DIR` (not just top-level, and
+not just `*.env.example`) specifically so this kind of nested template
+gets picked up too — keep that in mind if adding a new template that
+isn't a flat `.env` file.
 
 **`env/environment.d/*.example` is a third, separate template path**,
 parallel to `env/*.example` but for a different destination and reader:
@@ -137,7 +147,7 @@ scripts/make targets (`hack/install-session-env.sh` /
 **`hack/common.sh`** is sourced (not executed) by every other script in
 `hack/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
 `QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`,
-`ENVIRONMENT_D_EXAMPLE_DIR`, `MCPOD_CONFIG_DIR`, `HOME_BIN_SRC_DIR`,
+`ENVIRONMENT_D_EXAMPLE_DIR`, `HOME_BIN_SRC_DIR`,
 `HOME_LIB_SRC_DIR`, and the functions `init_logging()`,
 `resolve_quadlet_bin()`, `install_config_dir()`, `install_env_dir()`,
 `install_environment_d_dir()`, `install_bin_dir()`, `install_lib_dir()`,
@@ -192,7 +202,7 @@ not vendored copies — `make test`/`make submodules` runs
 `git submodule update --init --recursive` automatically if
 `test/vendor/bats-core/bin/bats` isn't executable yet.
 
-**`mcp-kubernetes.container`'s `Image=` points at a sibling `.image` unit**
+**`kubernetes-mcp-server.container`'s `Image=` points at a sibling `.image` unit**
 (`kubernetes-mcp-server.image`), not a bare registry reference — Quadlet
 resolves the `.image` suffix to that unit, generates
 `kubernetes-mcp-server-image.service` to pull it, and auto-adds the
@@ -203,7 +213,7 @@ The actual `podman pull`-equivalent image reference lives in the
 at it — nothing Quadlet-managed runs the GitHub server (see below) — it
 exists standalone purely to keep that image pulled/current.
 
-**`mcp-kubernetes.container` is intentionally incomplete**
+**`kubernetes-mcp-server.container` is intentionally incomplete**
 (`TODO(verify)` comments in it and in `kubernetes-mcp-server.image`): MCP
 servers are normally spawned per-connection over stdio, which doesn't fit
 a long-lived systemd unit. This unit assumes the container image supports
@@ -215,7 +225,7 @@ changing `Image=` (in the `.image` file) or `Exec=` (in the `.container`
 file). README.md "Configuring each server" links the image's upstream
 repo and lists which of its env vars/flags this repo currently sets vs.
 leaves at defaults — check it before adding new keys to
-`env/mcp-kubernetes*.env.example`, and note it already flags that the
+`env/kubernetes-mcp*.env.example`, and note it already flags that the
 Kubernetes server's real flag is `--port` (Streamable HTTP), not the
 `--transport sse` currently in `Exec=`.
 

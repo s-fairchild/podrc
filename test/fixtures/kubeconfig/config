@@ -1,5 +1,5 @@
 # Test fixture standing in for a real ~/.kube/config. Content doesn't
-# matter to mcp-kubernetes-kubeconfig-secret -- it only checks the file
+# matter to kubernetes-mcp-kubeconfig-secret -- it only checks the file
 # exists and passes its path straight through to `podman secret create`.
 apiVersion: v1
 kind: Config

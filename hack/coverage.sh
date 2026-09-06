@@ -51,7 +51,7 @@ resolve_kcov_bin() {
 # kcov's bash line-tracer is unreliable across forked/exec'd child
 # processes: hack/*.sh (invoked the same way, via `run "$SCRIPT"` in a
 # bats test) is consistently covered, but home/bin/* scripts -- run as
-# subprocesses by e.g. mcp-kubernetes-kubeconfig-secret.bats -- are
+# subprocesses by e.g. kubernetes-mcp-kubeconfig-secret.bats -- are
 # consistently missing from the report even though the tests exercise
 # and pass them, across every script shape/location/env tried. This is a
 # kcov limitation (bisected extensively; not about home/bin/ vs hack/ as

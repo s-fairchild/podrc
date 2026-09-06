@@ -1,10 +1,10 @@
 # Kubernetes MCP server, run as a rootless podman user service.
 #
-# Installed to $XDG_CONFIG_HOME/containers/systemd/mcp-kubernetes.container
-# Quadlet generates mcp-kubernetes.service from this file.
+# Installed to $XDG_CONFIG_HOME/containers/systemd/kubernetes-mcp-server.container
+# Quadlet generates kubernetes-mcp-server.service from this file.
 #
 # The container needs read access to a kubeconfig for whichever cluster
-# it should manage. Point KUBECONFIG (in mcp-kubernetes.env) at the
+# it should manage. Point KUBECONFIG (in kubernetes-mcp.env) at the
 # in-container path below, and swap the source path in Volume= for your
 # real kubeconfig -- this repo's sibling `titan` cluster kubeconfig, a
 # kubeconfig scoped to a service account, etc.
@@ -12,14 +12,14 @@
 # The optional config directory (a main config.toml plus ordered
 # conf.d/*.toml drop-ins) is mounted the same way, as a whole directory:
 # the Volume= line below binds
-# $XDG_CONFIG_HOME/mcpod/etc/mcp-kubernetes-server read-only at
-# /etc/kubernetes-mcp-server in the container. `make install` populates
-# that source directory from config/mcpod/etc/mcp-kubernetes-server/
-# -- real, untracked files you edit directly in your checkout (see
-# config/mcpod/.gitignore); every install mirrors its current
-# contents, so edits there are picked up on the next `make install`. If
-# you don't need this, drop the --config/--config-dir flags and the
-# Volume= line below, and leave that source directory empty.
+# $XDG_CONFIG_HOME/mcpod/etc/kubernetes-mcp-server read-only at
+# /etc/kubernetes-mcp-server in the container. `make install` writes that
+# source directory's contents from env/etc/kubernetes-mcp-server/*.example
+# (skipping any file that already exists, same as every other env
+# template) -- edit them directly under $XDG_CONFIG_HOME/mcpod/ after
+# install; they're never overwritten by a reinstall. If you don't need
+# this, drop the --config/--config-dir flags and the Volume= line below,
+# and leave that installed directory empty.
 
 [Unit]
 Description=Kubernetes MCP Server
@@ -28,7 +28,7 @@ Requires=mcp-network.service
 Wants=network-online.target
 
 [Service]
-EnvironmentFile=%h/.config/mcpod/mcp-kubernetes-systemd.env
+EnvironmentFile=%h/.config/mcpod/kubernetes-mcp-systemd.env
 ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
 
@@ -38,8 +38,8 @@ ContainerName=%N
 Network=mcp.network
 PublishPort=127.0.0.1:8082:8082
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
-Volume=%h/.config/mcpod/etc/mcp-kubernetes-server:/etc/kubernetes-mcp-server:ro,Z
-EnvironmentFile=%h/.config/mcpod/mcp-kubernetes.env
+Volume=%h/.config/mcpod/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z
+EnvironmentFile=%h/.config/mcpod/kubernetes-mcp.env
 Exec=--cluster-provider kubeconfig \
      --config /etc/kubernetes-mcp-server/config.toml \
      --log-file stderr \

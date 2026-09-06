@@ -2,13 +2,13 @@
 #
 # Installed to $XDG_CONFIG_HOME/containers/systemd/kubernetes-mcp-server.image
 # Quadlet generates kubernetes-mcp-server-image.service from this file,
-# which pulls the image on start. mcp-kubernetes.container depends on it
+# which pulls the image on start. kubernetes-mcp.container depends on it
 # via Image=kubernetes-mcp-server.image (Quadlet resolves the .image
 # suffix to this unit and wires up the service dependency automatically).
 #
 # TODO(verify): Image= below is a placeholder. Several "kubernetes-mcp-server"
 # projects exist with different registries/images; pick the one you intend
-# to run and update Image= to match. See mcp-kubernetes.container's
+# to run and update Image= to match. See kubernetes-mcp.container's
 # TODO(verify) and README.md "Transport caveat" for the rest of what needs
 # confirming (transport flag, Exec= in the .container file).
 

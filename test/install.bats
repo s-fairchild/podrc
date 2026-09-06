@@ -14,7 +14,7 @@ teardown() {
 	assert_success
 
 	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/mcp-github.container" ]
-	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp-kubernetes.container" ]
+	[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp.network" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.image" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.image" ]
@@ -29,24 +29,31 @@ teardown() {
 	assert_success
 }
 
-@test "install: mirrors home/config/mcpod local config overlay into XDG_CONFIG_HOME/mcpod" {
-	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" run "${REPO_ROOT}/hack/install.sh"
+@test "install: recursively installs nested env templates, preserving directory structure" {
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/config.toml" ]
-	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/conf.d/00-test.toml" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/config.toml" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/conf.d/00-base.toml" ]
 }
 
-@test "install: local config overlay always overwrites (not a one-shot template)" {
-	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" "${REPO_ROOT}/hack/install.sh"
-	dest="${XDG_CONFIG_HOME}/mcpod/etc/mcp-kubernetes-server/config.toml"
+@test "install: never overwrites an existing nested config file" {
+	"${REPO_ROOT}/hack/install.sh"
+	dest="${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/config.toml"
 	echo "log_level = 1" >"${dest}"
 
-	MCPOD_CONFIG_DIR="${FIXTURES_DIR}/mcpod-config" run "${REPO_ROOT}/hack/install.sh"
+	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	run grep -q "log_level = 6" "${dest}"
+	run grep -q "log_level = 1" "${dest}"
 	assert_success
+}
+
+@test "install: does not install env/environment.d templates under XDG_CONFIG_HOME/mcpod" {
+	run "${REPO_ROOT}/hack/install.sh"
+	assert_success
+
+	[ ! -e "${XDG_CONFIG_HOME}/mcpod/environment.d" ]
 }
 
 @test "install: never overwrites an existing env file" {
