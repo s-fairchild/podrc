@@ -87,12 +87,18 @@ init_logging() {
         source "${logger_entry}"
     fi
 
+    local -a init_logger_options=("--name" "$(basename "$0")")
+    local logger_dev_config="${REPO_ROOT}/hack/etc/bash-logger/logging-dev.conf"
+    [[ -f "${logger_dev_config}" ]] && init_logger_options+=("--config" "${logger_dev_config}")
+    readonly init_logger_options
+
     local errexit_was_set=0
     [[ $- == *e* ]] && errexit_was_set=1
 
     set +e
 
-    init_logger --name "$(basename "$0")"
+    # shellcheck disable=SC2068
+    init_logger ${init_logger_options[@]}
 
     (( errexit_was_set )) && set -e
 
