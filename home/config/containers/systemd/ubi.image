@@ -1,0 +1,15 @@
+# Red Hat Universal Base Image (UBI 9), full variant.
+#
+# Installed to $XDG_CONFIG_HOME/containers/systemd/ubi.image
+# Quadlet generates ubi-image.service from this file, which pulls/refreshes
+# the image on start. No .container unit references this via Image= --
+# it isn't part of either MCP server; it exists standalone as a trusted,
+# Red Hat-published base for ad hoc use (e.g. curl-based troubleshooting)
+# via `podman run --rm registry.access.redhat.com/ubi9/ubi ...`, keeping
+# the image pulled/current independent of any one-off run.
+
+[Image]
+Image=registry.access.redhat.com/ubi9/ubi:latest
+Retry=10
+RetryDelay=30s
+TLSVerify=true

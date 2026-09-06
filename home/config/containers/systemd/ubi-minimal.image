@@ -1,0 +1,20 @@
+# Red Hat Universal Base Image (UBI 9), minimal variant.
+#
+# Installed to $XDG_CONFIG_HOME/containers/systemd/ubi-minimal.image
+# Quadlet generates ubi-minimal-image.service from this file, which
+# pulls/refreshes the image on start. No .container unit references this
+# via Image= -- it isn't part of either MCP server; it exists standalone
+# as a trusted, Red Hat-published base for ad hoc use (e.g. curl-based
+# troubleshooting) via
+# `podman run --rm registry.access.redhat.com/ubi9/ubi-minimal ...`,
+# keeping the image pulled/current independent of any one-off run.
+# Unlike ubi.image, this variant doesn't ship curl (or dnf) by default --
+# install it with microdnf first, e.g.:
+#   podman run --rm registry.access.redhat.com/ubi9/ubi-minimal \
+#     microdnf install -y curl-minimal
+
+[Image]
+Image=registry.access.redhat.com/ubi9/ubi-minimal:latest
+Retry=10
+RetryDelay=30s
+TLSVerify=true

@@ -1,0 +1,31 @@
+# Podman network matching a local k3d cluster's own network, for
+# containers that need to reach it directly (e.g. a Kubernetes MCP
+# server pointed at k3d instead of a remote cluster).
+#
+# Installed to $XDG_CONFIG_HOME/containers/systemd/k3d.network
+# Quadlet generates k3d-network.service from this file. No .container
+# unit in this repo depends on it yet via Network=k3d -- standalone,
+# ad hoc infrastructure for local development against k3d.
+
+[Unit]
+Description=Shared network for MCP servers
+
+[Service]
+EnvironmentFile=-%h/.config/mcpod/%N-systemd.env
+EnvironmentFile=%h/.config/mcpod/mcp-podman-global-systemd.env
+ExecStartPre=/bin/sh -c '[ -n "${PODMAN_LOG_LEVEL}" ] || { echo "PODMAN_LOG_LEVEL is not set" >&2; exit 1; }'
+
+[Network]
+NetworkName=k3d
+InterfaceName=k3d0
+IPAMDriver=host-local
+Subnet=10.81.0.0/28
+IPRange=10.81.0.0/28
+GlobalArgs=--log-level=${PODMAN_LOG_LEVEL}
+Gateway=10.81.0.1
+DNS=10.81.0.1
+IPv6=false
+NetworkDeleteOnStop=true
+Label=claude
+Label=claude-code
+Label=mcp-servers
