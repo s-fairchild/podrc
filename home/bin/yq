@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Run containerized yq instead of requiring it on the host.
+#
+# Usage: yq <args...>
+
+set -euo pipefail
+
+#######################################
+# Runs yq via `podman run`, mounting the current directory read-write at
+# /data (as the invoking user, via --userns=keep-id) and forwarding all
+# arguments to the container's yq entrypoint. --exit-status=1 makes yq
+# exit non-zero when the expression evaluates to false/null, matching the
+# real yq binary's default behavior.
+# Arguments:
+#   All arguments are forwarded to the containerized yq.
+# Globals:
+#   PODMAN_LOG_LEVEL: optional; forwarded as `podman run --log-level`.
+#   YQ_*: any variable matching this pattern is forwarded into the
+#     container's environment, for use in yq expressions (e.g. via env()).
+# Outputs:
+#   Writes the containerized yq's stdout/stderr.
+# Returns:
+#   The containerized yq's exit status.
+#######################################
+yq() {
+  local -r image="docker.io/mikefarah/yq:4.53.2"
+
+  local -a podman_run_options=(
+    "-i"
+    "--rm"
+    "--pull=missing"
+    "--userns=keep-id"
+    "--security-opt=label=disable"
+    "-v=${PWD}:/data:rw,rshared"
+    "--workdir=/data"
+    "--env=YQ_*"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  podman run \
+    "${podman_run_options[@]}" \
+    "$image" \
+    --exit-status=1 \
+    "$@"
+}
+
+yq "$@"

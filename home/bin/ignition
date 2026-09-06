@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Run containerized ignition-validate instead of requiring it on the host.
+#
+# Usage: ignition <args...>
+
+set -euo pipefail
+
+#######################################
+# Runs ignition-validate via `podman run`, mounting the current directory
+# read-only at /data (as the invoking user, via --userns=keep-id) and
+# forwarding all arguments to the container's ignition-validate entrypoint.
+# Arguments:
+#   All arguments are forwarded to the containerized ignition-validate.
+# Globals:
+#   PODMAN_LOG_LEVEL: optional; forwarded as `podman run --log-level`.
+# Outputs:
+#   Writes the containerized ignition-validate's stdout/stderr.
+# Returns:
+#   The containerized ignition-validate's exit status.
+#######################################
+ignition() {
+  local -r image="quay.io/coreos/ignition-validate:release"
+
+  local -a podman_run_options=(
+    "-i"
+    "--rm"
+    "--pull=missing"
+    "--userns=keep-id"
+    "--security-opt=label=disable"
+    "-v=${PWD}:/data:ro,rshared"
+    "--workdir=/data"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  podman run \
+    "${podman_run_options[@]}" \
+    "$image" \
+    "$@"
+}
+
+ignition "$@"

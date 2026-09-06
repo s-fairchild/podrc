@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Run a containerized busybox instead of requiring one on the host.
+#
+# Usage: busybox <args...>
+
+set -euo pipefail
+
+#######################################
+# Runs busybox via `podman run`, mounting the current directory read-only
+# at /data (as the invoking user, via --userns=keep-id) and forwarding all
+# arguments to the container's busybox entrypoint.
+# Arguments:
+#   All arguments are forwarded to the containerized busybox.
+# Globals:
+#   PODMAN_LOG_LEVEL: optional; forwarded as `podman run --log-level`.
+# Outputs:
+#   Writes the containerized busybox's stdout/stderr.
+# Returns:
+#   The containerized busybox's exit status.
+#######################################
+busybox() {
+  local -r image="docker.io/busybox:stable-glibc"
+
+  local -a podman_run_options=(
+    "-i"
+    "--rm"
+    "--userns=keep-id"
+    "--security-opt=label=disable"
+    "-v=${PWD}:/data:ro,rshared"
+    "--workdir=/data"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  podman run \
+    "${podman_run_options[@]}" \
+    "$image" \
+    "$@"
+}
+
+busybox "$@"

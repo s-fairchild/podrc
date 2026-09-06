@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Run containerized coreos-installer instead of requiring it on the host.
+#
+# Usage: coreos-installer <args...>
+
+set -euo pipefail
+
+#######################################
+# Runs coreos-installer via `podman run`, mounting the current directory
+# read-only at /data (as the invoking user, via --userns=keep-id) and
+# forwarding all arguments to the container's coreos-installer entrypoint.
+# Arguments:
+#   All arguments are forwarded to the containerized coreos-installer.
+# Globals:
+#   PODMAN_LOG_LEVEL: optional; forwarded as `podman run --log-level`.
+# Outputs:
+#   Writes the containerized coreos-installer's stdout/stderr.
+# Returns:
+#   The containerized coreos-installer's exit status.
+#######################################
+coreos-installer() {
+  local -r image="quay.io/coreos/coreos-installer:release"
+
+  local -a podman_run_options=(
+    "-i"
+    "--rm"
+    "--pull=missing"
+    "--userns=keep-id"
+    "--security-opt=label=disable"
+    "-v=${PWD}:/data:ro,rshared"
+    "--workdir=/data"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  podman run \
+    "${podman_run_options[@]}" \
+    "$image" \
+    "$@"
+}
+
+coreos-installer "$@"

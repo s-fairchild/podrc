@@ -52,3 +52,39 @@ setup_sandbox() {
 teardown_sandbox() {
   rm -rf "${SANDBOX_DIR}"
 }
+
+#######################################
+# Sandboxes HOME plus a stubbed `podman` on PATH (test/fixtures/podman-bin/),
+# for home/bin/ scripts that only ever shell out to podman and never touch
+# XDG_CONFIG_HOME or systemctl. Call from setup(); pairs with
+# teardown_podman_sandbox.
+# Globals:
+#   FIXTURES_DIR
+#   SANDBOX_DIR (set by this function)
+#   PODMAN_STUB_LOG (set by this function)
+#######################################
+setup_podman_sandbox() {
+  SANDBOX_DIR="$(mktemp -d)"
+  export SANDBOX_DIR
+  export HOME="${SANDBOX_DIR}/home"
+  mkdir -p "${HOME}"
+
+  PODMAN_STUB_LOG="${SANDBOX_DIR}/podman.log"
+  export PODMAN_STUB_LOG
+  : >"${PODMAN_STUB_LOG}"
+
+  export PATH="${FIXTURES_DIR}/podman-bin:${PATH}"
+
+  unset PODMAN_STUB_EXIT PODMAN_LOG_LEVEL
+}
+
+#######################################
+# Removes the sandbox directory setup_podman_sandbox created, and the cwd
+# it may have created via cd. Call from teardown().
+# Globals:
+#   SANDBOX_DIR
+#######################################
+teardown_podman_sandbox() {
+  cd "${REPO_ROOT}"
+  rm -rf "${SANDBOX_DIR}"
+}

@@ -26,7 +26,12 @@ mcpod/
 │   │           └── kubernetes-mcp-server.container  Kubernetes MCP server
 │   ├── bin/                         -> ~/.local/bin/* (mode 0744)
 │   │   ├── github-mcp-server-stdio                GitHub MCP server, spawned per-connection
-│   │   └── kubernetes-mcp-kubeconfig-secret       writes the kubeconfig podman secret
+│   │   ├── kubernetes-mcp-kubeconfig-secret       writes the kubeconfig podman secret
+│   │   ├── busybox                                containerized busybox
+│   │   ├── butane                                 containerized butane
+│   │   ├── coreos-installer                       containerized coreos-installer
+│   │   ├── ignition                               containerized ignition-validate
+│   │   └── yq                                     containerized yq
 │   └── lib/
 │       └── mcpod/                   -> ~/.local/lib/mcpod/* (mode 0644, not executable)
 │           (library code home/bin/ scripts source)
@@ -178,6 +183,31 @@ one exception, touching the `claude` CLI's own user-scope config instead
 7. For Claude Code specifically, `make install-claude-mcp` does step 6's
    `claude mcp add` for you, plus the equivalent `--transport http` add
    for `kubernetes-mcp` — see "Registering with Claude Code" below.
+
+## Container-wrapped CLI tools
+
+`home/bin/busybox`, `home/bin/butane`, `home/bin/coreos-installer`,
+`home/bin/ignition`, and `home/bin/yq` aren't part of the MCP servers —
+they're standalone convenience wrappers that run a container image
+instead of requiring the real binary on the host, handy for building or
+validating Fedora CoreOS/bootc artifacts (Butane configs, Ignition
+configs, install media) alongside this repo. `make install-local`
+installs them the same way as the MCP-related `home/bin/` scripts above.
+Each one:
+
+- runs `podman run --userns=keep-id --security-opt=label=disable` so the
+  container sees the invoking user's UID/GID and SELinux label
+  confinement doesn't block the bind mount
+- bind-mounts `$PWD` at `/data` (`yq` mounts it read-write since `yq -i`
+  edits files in place; the others mount it read-only) and sets it as
+  `--workdir`
+- forwards all of its own arguments straight to the containerized tool
+- honors an optional `PODMAN_LOG_LEVEL` to set `podman run --log-level`
+
+`yq` additionally forwards any `YQ_*`-prefixed environment variable into
+the container (`--env=YQ_*`, for use in expressions via `env()`), and
+always passes `--exit-status=1` so a false/null result exits non-zero,
+matching the real `yq` binary's default behavior.
 
 ## Transport caveat
 
