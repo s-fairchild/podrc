@@ -5,7 +5,7 @@
 # pulls/refreshes the image on start. No .container unit references this
 # via Image= -- github-mcp-server only supports the stdio transport (see
 # README.md "Transport caveat"), which runs per-connection via
-# home/bin/mcp-github-stdio's own `podman run`, not a Quadlet-managed
+# home/bin/github-mcp-server-stdio's own `podman run`, not a Quadlet-managed
 # container. This unit exists solely to keep the image pulled/current
 # independent of that; enable github-mcp-server-image.service (or its
 # timer, if you add one) if you want that.

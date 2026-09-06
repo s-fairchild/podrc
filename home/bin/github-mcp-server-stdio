@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Spawn one github-mcp-server container per MCP connection over stdio.
+# Point an MCP client's stdio "command" directly at this script -- it
+# execs into `podman run -i --rm`, so the container's stdin/stdout become
+# the MCP transport and there is no long-lived service to attach to.
+#
+# Deliberately does not source common.sh/init_logging: bash-logger sends
+# INFO and below to stdout by default, and once podman starts, stdout is
+# the MCP protocol channel -- a stray log line there would corrupt it.
+# Diagnostics below go straight to stderr instead.
+#
+# Usage: home/bin/github-mcp-server-stdio
+
+set -euo pipefail
+
+readonly ENV_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
+readonly CONTAINER_ENV_FILE="${ENV_DIR}/github-mcp-server.env"
+
+readonly GITHUB_APP_PEM_PODMAN_SECRET_DEFAULT="github-app-private-key"
+readonly GITHUB_MCP_SERVER_STDIO_IMAGE_TAG_DEFAULT="latest"
+readonly GITHUB_MCP_SERVER_STDIO_REPOSITORY_DEFAULT="ghcr.io/github/github-mcp-server"
+
+#######################################
+# Prints a "missing file" error for f and exits.
+# Arguments:
+#   f: path of the missing file
+# Outputs:
+#   Writes an error to stdout.
+# Returns:
+#   Does not return; always exits 1.
+#######################################
+missing_fatal_error() {
+  local -r f="${1?f=\$1 must be provided.}"
+
+  echo "missing ${f} (run 'make install' first)"
+  exit 1
+}
+
+main() {
+  if [[ ! -f "${CONTAINER_ENV_FILE}" ]]; then
+    missing_fatal_error "${CONTAINER_ENV_FILE}"
+  fi
+
+  # shellcheck source=../../env/github-mcp-server.env.example
+  . "${CONTAINER_ENV_FILE}"
+
+  local -r github_app_private_key_filename="${GITHUB_APP_PEM_PODMAN_SECRET%-key:="$GITHUB_APP_PEM_PODMAN_SECRET_DEFAULT"}.key"
+  local -ar podman_run_options=(
+    "-i"
+    "--rm"
+    # TODO add file mode
+    "--secret=${GITHUB_APP_PEM_PODMAN_SECRET},target=${github_app_private_key_filename}"
+    "--env=GITHUB_APP_PRIVATE_KEY_PATH=/run/secrets/${github_app_private_key_filename}"
+    "--env=GITHUB_APP_ID=${GITHUB_APP_ID}"
+    "--env=GITHUB_APP_INSTALLATION_ID=${GITHUB_APP_INSTALLATION_ID}"
+  )
+
+  readonly image_tag="${GITHUB_MCP_SERVER_STDIO_CONTAINER_IMAGE_TAG:=$GITHUB_MCP_SERVER_STDIO_IMAGE_TAG_DEFAULT}"
+  readonly image_ref="${GITHUB_MCP_SERVER_STDIO_CONTAINER_IMAGE:=$GITHUB_MCP_SERVER_STDIO_REPOSITORY_DEFAULT}:${image_tag}"
+  exec podman run \
+    "${podman_run_options[@]}" \
+    "${image_ref}" \
+    stdio \
+    --enable-command-logging
+}
+
+main "$@"

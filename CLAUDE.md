@@ -57,7 +57,7 @@ itself, always run from the repo checkout.
 **`home/bin/` vs `home/lib/`.** `home/bin/*` are standalone, directly
 executable entry points (installed mode `0744` by `make install-local`),
 deliberately named without a `.sh` suffix since they're meant to be run
-as plain commands once on `PATH` (`mcp-github-stdio`,
+as plain commands once on `PATH` (`github-mcp-server-stdio`,
 `kubernetes-mcp-kubeconfig-secret`). `home/lib/mcpod/*` is for library
 code a `home/bin/` script sources rather than runs — installed mode
 `0644` (never executable) to `~/.local/lib/mcpod`. The `mcpod/`
@@ -142,7 +142,7 @@ to read a unit's `key=value` lines and expand the `%N` systemd specifier.
 New scripts should source `common.sh` the same way rather than recomputing
 any of this — this applies to `hack/*.sh` only; `home/bin/*` scripts
 deliberately don't (see the stdio-purity note in
-`home/bin/mcp-github-stdio`).
+`home/bin/github-mcp-server-stdio`).
 
 **`vendor/bash-logger`** (git submodule, `git@github.com:s-fairchild/bash-logger.git`)
 provides the `log_debug`/`log_info`/`log_warn`/`log_error`/... functions
@@ -209,7 +209,7 @@ Kubernetes server's real flag is `--port` (Streamable HTTP), not the
 **`github-mcp-server` doesn't have this problem, and isn't Quadlet-managed
 at all.** It only supports the `stdio` transport (confirmed against
 upstream — no self-hosted HTTP/SSE mode exists; GitHub's own hosted
-`api.githubcopilot.com` endpoint is unrelated). `home/bin/mcp-github-stdio`
+`api.githubcopilot.com` endpoint is unrelated). `home/bin/github-mcp-server-stdio`
 is what actually runs it: an MCP client's stdio "command" points at that
 script directly, which resolves the installed env files under
 `~/.config/mcpod/` and `exec`s `podman run -i --rm ...
@@ -233,7 +233,7 @@ and why `mcp-github.container` was removed rather than kept
   sourced) and has no `main`. `home/bin/*` scripts follow the same
   function/`main` shape but deliberately don't source `hack/common.sh` —
   they're installed and run standalone on a machine that may not have
-  this repo checked out, and (for `mcp-github-stdio` specifically)
+  this repo checked out, and (for `github-mcp-server-stdio` specifically)
   can't risk `bash-logger`'s default stdout logging corrupting an MCP
   stdio stream.
 - Global variables are kept to a minimum and marked `readonly` once

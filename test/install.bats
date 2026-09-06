@@ -13,7 +13,7 @@ teardown() {
 	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/mcp-github.container" ]
+	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.container" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp.network" ]
 	[ -f "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.image" ]
@@ -24,8 +24,8 @@ teardown() {
 	run "${REPO_ROOT}/hack/install.sh"
 	assert_success
 
-	[ -f "${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env" ]
-	run grep -q 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env"
+	[ -f "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env" ]
+	run grep -q 'GITHUB_APP_PEM_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env"
 	assert_success
 }
 
@@ -58,8 +58,8 @@ teardown() {
 
 @test "install: never overwrites an existing env file" {
 	"${REPO_ROOT}/hack/install.sh"
-	env_file="${XDG_CONFIG_HOME}/mcpod/mcp-github-systemd.env"
-	echo 'GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET="real-secret-name"' >"${env_file}"
+	env_file="${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env"
+	echo 'GITHUB_APP_PEM_PODMAN_SECRET="real-secret-name"' >"${env_file}"
 
 	run "${REPO_ROOT}/hack/install.sh"
 	assert_success

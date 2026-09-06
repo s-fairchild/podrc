@@ -25,14 +25,13 @@ mcpod/
 │   │           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
 │   │           └── kubernetes-mcp-server.container       Kubernetes MCP server
 │   ├── bin/                         -> ~/.local/bin/* (mode 0744)
-│   │   ├── mcp-github-stdio                       GitHub MCP server, spawned per-connection
+│   │   ├── github-mcp-server-stdio                GitHub MCP server, spawned per-connection
 │   │   └── kubernetes-mcp-kubeconfig-secret       writes the kubeconfig podman secret
 │   └── lib/
 │       └── mcpod/                   -> ~/.local/lib/mcpod/* (mode 0644, not executable)
 │           (library code home/bin/ scripts source)
 ├── env/                              -> ~/.config/mcpod/* (copied recursively, not mirrored 1:1)
-│   ├── mcp-github.env.example
-│   ├── mcp-github-systemd.env.example
+│   ├── github-mcp-server.env.example
 │   ├── kubernetes-mcp.env.example
 │   ├── kubernetes-mcp-systemd.env.example
 │   ├── etc/
@@ -139,9 +138,9 @@ write to your real `~/.config/containers/systemd`. Only `make install` /
 ### First real install
 
 1. `make install`
-2. Fill in real values in `~/.config/mcpod/mcp-github.env`
-   (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`), `mcp-github-systemd.env`
-   (`GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET`), `kubernetes-mcp.env`, and
+2. Fill in real values in `~/.config/mcpod/github-mcp-server.env`
+   (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`,
+   `GITHUB_APP_PEM_PODMAN_SECRET`), `kubernetes-mcp.env`, and
    `kubernetes-mcp-systemd.env` (kubeconfig path, etc). Create the GitHub
    App private key's podman secret separately —
    `podman secret create github-app-private-key ./your-app.private-key.pem`
@@ -164,8 +163,8 @@ write to your real `~/.config/containers/systemd`. Only `make install` /
    lingering) so it's a deliberate manual step, not something
    `make install` does for you.
 6. `make install-local`, then point your MCP client's stdio server
-   command at `~/.local/bin/mcp-github-stdio` (e.g.
-   `claude mcp add mcp-github --scope user -- ~/.local/bin/mcp-github-stdio`
+   command at `~/.local/bin/github-mcp-server-stdio` (e.g.
+   `claude mcp add mcp-github --scope user -- ~/.local/bin/github-mcp-server-stdio`
    for Claude Code). There's no systemd service to start for this one —
    see "Transport caveat".
 
@@ -182,7 +181,7 @@ at via URL instead.
 transport it supports (its "remote"/HTTP mode is GitHub's own hosted
 endpoint at `api.githubcopilot.com`, not something this image can serve
 standalone), so there's no `mcp-github.container` in this repo at all.
-Instead, `home/bin/mcp-github-stdio` is what an MCP client's stdio
+Instead, `home/bin/github-mcp-server-stdio` is what an MCP client's stdio
 "command" points at directly: it resolves the installed env files under
 `~/.config/mcpod/` and `exec`s `podman run -i --rm ...
 ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
@@ -230,33 +229,36 @@ consult upstream for the full list before adding new keys.
 
 ### GitHub MCP server
 
-`home/bin/mcp-github-stdio` / `github-mcp-server.image`. Upstream:
+`home/bin/github-mcp-server-stdio` / `github-mcp-server.image`. Upstream:
 [github/github-mcp-server](https://github.com/github/github-mcp-server)
 ([README](https://github.com/github/github-mcp-server/blob/main/README.md)
 documents all flags/env vars;
 [`docs/remote-server.md`](https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md)
 covers the hosted remote variant, not relevant to this self-hosted setup).
 
-Set by `mcp-github.env.example` / `mcp-github-systemd.env.example` in this
-repo. Auth is via a GitHub App (see upstream
+Set by `github-mcp-server.env.example` in this repo, sourced directly by
+`github-mcp-server-stdio` (not passed via `podman run --env-file=`). Auth
+is via a GitHub App (see upstream
 [`docs/github-app-auth.md`](https://github.com/github/github-mcp-server/blob/main/docs/github-app-auth.md)),
 not a PAT:
 - `GITHUB_APP_ID` / `GITHUB_APP_INSTALLATION_ID` — plain env, not secret
-- `GITHUB_APP_PRIVATE_KEY_PATH` — path to the mounted PEM, must match the
-  `target=` in `mcp-github-stdio`'s `--secret` flag
-  (`/run/secrets/github-app-key.pem`)
-- `GITHUB_APP_PRIVATE_KEY_PODMAN_SECRET` (in `mcp-github-systemd.env`) —
-  name of the podman secret holding the PEM contents; create it yourself
-  with `podman secret create github-app-private-key ./your-app.pem`,
+- `GITHUB_APP_PRIVATE_KEY_PATH` — path to the mounted PEM; set by the
+  script itself to match the `target=` it computes for its `--secret`
+  flag from `GITHUB_APP_PEM_PODMAN_SECRET` (e.g.
+  `/run/secrets/github-app-private-key.key` for the default secret name)
+- `GITHUB_APP_PEM_PODMAN_SECRET` — name of the podman secret holding the
+  PEM contents, not the key material itself; create it yourself with
+  `podman secret create github-app-private-key ./your-app.pem`,
   `make install` doesn't do this for you
 - `GITHUB_TOOLSETS` — comma-separated toolsets to enable (equivalent to
   `--toolsets`)
 - `GITHUB_READ_ONLY` — `1` disables all write tools
 
 Other upstream env vars not currently set here, add to
-`mcp-github.env.example` if needed: `GITHUB_HOST` (GitHub Enterprise
-Server / GHE Cloud hostname), `GITHUB_TOOLS` (enable individual tools
-instead of whole toolsets), `GITHUB_INSIDERS` (experimental features).
+`github-mcp-server.env.example` if needed: `GITHUB_HOST` (GitHub
+Enterprise Server / GHE Cloud hostname), `GITHUB_TOOLS` (enable
+individual tools instead of whole toolsets), `GITHUB_INSIDERS`
+(experimental features).
 
 ### Kubernetes MCP server
 
@@ -293,6 +295,6 @@ it.
 
 ## Ports
 
-`mcp-github-stdio` runs `stdio` and publishes no port. The Kubernetes
+`github-mcp-server-stdio` runs `stdio` and publishes no port. The Kubernetes
 service publishes to `127.0.0.1:8081` only — not exposed off the host.
 Point your MCP client's HTTP transport config at `http://127.0.0.1:8081`.

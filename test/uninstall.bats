@@ -15,7 +15,7 @@ teardown() {
 	assert_success
 
 	[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]
-	[ -f "${XDG_CONFIG_HOME}/mcpod/mcp-github.env" ]
+	[ -f "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env" ]
 }
 
 @test "uninstall: disables units through systemctl --user" {
