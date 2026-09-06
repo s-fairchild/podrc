@@ -1,10 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Shared paths/helpers sourced by the other hack/*.sh entry points.
 # Not meant to be run directly.
 
-set -o errexit \
-  -o nounset \
-  -o pipefail
+set -euo pipefail
 
 # Globals (readonly, set once at source time):
 #   SCRIPT_DIR      - absolute path to hack/, used to locate sibling files

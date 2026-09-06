@@ -36,6 +36,19 @@ teardown() {
   assert_success
 }
 
+@test "install-claude-mcp: skips mcp-github when already registered" {
+  "${REPO_ROOT}/hack/install-local.sh"
+  "${REPO_ROOT}/hack/install-claude-mcp.sh"
+  : >"${CLAUDE_STUB_LOG}"
+
+  run "${REPO_ROOT}/hack/install-claude-mcp.sh"
+  assert_success
+  assert_output --partial "mcp-github already registered with claude; skipping"
+
+  run grep -q "mcp add mcp-github" "${CLAUDE_STUB_LOG}"
+  assert_failure
+}
+
 @test "install-claude-mcp: never overwrites an existing registration" {
   run "${REPO_ROOT}/hack/install-claude-mcp.sh"
   assert_success
@@ -88,6 +101,25 @@ teardown() {
 @test "uninstall-claude-mcp: succeeds even if nothing was registered" {
   run "${REPO_ROOT}/hack/uninstall-claude-mcp.sh"
   assert_success
+}
+
+@test "uninstall-claude-mcp: fails with guidance when the claude CLI is missing" {
+  # A real `claude` may be installed system-wide (e.g. /usr/bin/claude),
+  # so a plain PATH restriction isn't enough to hide it -- mirror
+  # /usr/bin into a sandbox dir instead, symlinking everything except
+  # any file literally named `claude`.
+  no_claude_bin="${SANDBOX_DIR}/no-claude-bin"
+  mkdir -p "${no_claude_bin}"
+  for f in /usr/bin/*; do
+    [[ -x "${f}" ]] || continue
+    name="$(basename "${f}")"
+    [[ "${name}" == "claude" ]] && continue
+    ln -sf "${f}" "${no_claude_bin}/${name}"
+  done
+
+  PATH="${no_claude_bin}" run "${REPO_ROOT}/hack/uninstall-claude-mcp.sh"
+  assert_failure
+  assert_output --partial "claude CLI not found on PATH"
 }
 
 @test "make uninstall-claude-mcp: works via the Makefile target" {

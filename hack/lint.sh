@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Validate every quadlet file under home/config/containers/systemd/
 # without touching any real systemd search path, by pointing the local
 # quadlet binary's dry-run mode at this repo via QUADLET_UNIT_DIRS.

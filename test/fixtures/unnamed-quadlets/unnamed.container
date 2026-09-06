@@ -1,0 +1,5 @@
+# Fixture: a *.container unit with no ContainerName= set, so
+# quadlet_container_names() must fall back to the unit's own basename.
+
+[Container]
+Image=unnamed.image

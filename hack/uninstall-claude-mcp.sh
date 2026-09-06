@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Remove the MCP server registrations install-claude-mcp.sh writes from
 # Claude Code's own `claude mcp` config. Counterpart to
 # install-claude-mcp.sh; not part of `make uninstall` since

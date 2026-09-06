@@ -33,6 +33,20 @@ teardown() {
   [[ ! -e "${XDG_CONFIG_HOME}/podrc" ]]
 }
 
+@test "uninstall: warns and skips stopping units when QUADLET_SRC_DIR has no *.container units" {
+  QUADLET_SRC_DIR="${FIXTURES_DIR}/empty-quadlets" run "${REPO_ROOT}/hack/uninstall.sh"
+  assert_success
+  assert_output --partial "no *.container units found in ${FIXTURES_DIR}/empty-quadlets; nothing to stop"
+}
+
+@test "uninstall --purge: skips stopping network units when QUADLET_SRC_DIR has no *.network units" {
+  QUADLET_SRC_DIR="${FIXTURES_DIR}/empty-quadlets" run "${REPO_ROOT}/hack/uninstall.sh" --purge
+  assert_success
+
+  run grep -q -- "--user stop" "${SYSTEMCTL_STUB_LOG}"
+  assert_failure
+}
+
 @test "make uninstall: works via the Makefile target" {
   run make -C "${REPO_ROOT}" uninstall
   assert_success

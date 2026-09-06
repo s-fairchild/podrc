@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Register this repo's MCP servers with Claude Code's own `claude mcp`
 # config. Opt-in and separate from `make install`: it touches Claude
 # Code's user config, outside ~/.config/podrc (this repo's usual install

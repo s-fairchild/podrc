@@ -1,13 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Install the quadlet units and env-file templates for the current user
 # and register them with systemd --user. Never overwrites an existing
 # env file, since those hold secrets once filled in.
 #
 # Usage: hack/install.sh
 
-set -o errexit \
-  -o nounset \
-  -o pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck source=./common.sh

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Install the opt-in environment.d template that sets XDG_CONFIG_HOME
 # session-wide (read by systemd --user's environment.d generator, not
 # just interactive shells). Never overwrites an existing destination file,

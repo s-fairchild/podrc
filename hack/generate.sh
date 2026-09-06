@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Materialize the systemd unit files quadlet would generate from
 # home/config/containers/systemd/, writing them to .generated/ for
 # inspection (e.g. to eyeball the resulting ExecStart before installing).

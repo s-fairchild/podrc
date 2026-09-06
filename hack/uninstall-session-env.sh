@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Remove the environment.d template(s) install-session-env.sh writes.
 # Counterpart to install-session-env.sh; not part of `make uninstall`
 # since install-session-env.sh isn't part of `make install` either.

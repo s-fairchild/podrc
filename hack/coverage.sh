@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Runs the bats suite under kcov to measure line coverage of hack/*.sh and
 # home/bin/* (the shell code the suite actually exercises), writing an
 # HTML report to .coverage/ (deliberately not .generated/ -- see

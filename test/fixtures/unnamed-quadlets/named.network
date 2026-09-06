@@ -1,0 +1,6 @@
+# Fixture: a *.network unit with NetworkName= set, using the %N
+# specifier, so quadlet_network_names() must resolve it (net-named)
+# rather than falling back to the unit's own basename (named).
+
+[Network]
+NetworkName=net-%N

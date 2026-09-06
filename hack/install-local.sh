@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Install home/bin/* into ~/.local/bin (mode 0744, executable) and
 # home/lib/* into ~/.local/lib/podrc (mode 0644, not executable --
 # these are library files meant to be sourced by home/bin/ scripts, never

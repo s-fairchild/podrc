@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Suspend and restore the calling shell's `set -o xtrace` state around a
 # sensitive operation (e.g. one that prints or handles a secret), without
 # a global variable -- the caller keeps the saved state in its own local
@@ -11,9 +11,7 @@
 #   ...sensitive operation...
 #   xtrace_restore "$xtrace_state"
 
-set -o errexit \
-    -o nounset \
-    -o pipefail
+set -euo pipefail
 
 # xtrace_save
 #

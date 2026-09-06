@@ -1,0 +1,4 @@
+# Fixture: a *.network unit with no NetworkName= set, so
+# quadlet_network_names() must fall back to the unit's own basename.
+
+[Network]

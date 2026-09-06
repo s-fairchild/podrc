@@ -82,6 +82,12 @@ teardown() {
   assert_failure
 }
 
+@test "install: warns and continues when QUADLET_SRC_DIR has no quadlet units" {
+  QUADLET_SRC_DIR="${FIXTURES_DIR}/empty-quadlets" run "${REPO_ROOT}/hack/install.sh"
+  assert_success
+  assert_output --partial "no quadlet unit files found in ${FIXTURES_DIR}/empty-quadlets"
+}
+
 @test "make install: works via the Makefile target" {
   run make -C "${REPO_ROOT}" install
   assert_success

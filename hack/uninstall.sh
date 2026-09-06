@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Stop and remove the installed quadlet units. Leaves env files (secrets)
 # and podman volumes/secrets in place unless --purge is given, which also
 # removes podman containers and networks created from this repo's units.
