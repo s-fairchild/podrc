@@ -29,9 +29,12 @@ set -euo pipefail
 #   HOME_BIN_SRC_DIR - home/bin/, installable scripts install-local.sh
 #                     copies into ~/.local/bin (mode 0744). Overridable via
 #                     env var so tests can point it at a fixture directory.
-#   HOME_LIB_SRC_DIR - home/lib/, library files (sourced by home/bin/
+#   HOME_LIB_SRC_DIR - home/lib/mcpod/, library files (sourced by home/bin/
 #                     scripts, never executed directly) install-local.sh
-#                     copies into ~/.local/lib/mcpod (mode 0644).
+#                     copies into ~/.local/lib/mcpod (mode 0644). The
+#                     mcpod/ subdirectory under home/lib/ mirrors the
+#                     ~/.local/lib/mcpod destination 1:1, same as
+#                     home/config/ and home/bin/ mirror theirs.
 #                     Overridable via env var so tests can point it at a
 #                     fixture directory.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -59,7 +62,7 @@ readonly ENVIRONMENT_D_EXAMPLE_DIR="${REPO_ROOT}/env/environment.d"
 HOME_BIN_SRC_DIR="${HOME_BIN_SRC_DIR:-${REPO_ROOT}/home/bin}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_BIN_SRC_DIR
-HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib}"
+HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib/mcpod}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_LIB_SRC_DIR
 

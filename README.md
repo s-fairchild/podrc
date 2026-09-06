@@ -27,8 +27,9 @@ mcpod/
 │   ├── bin/                         -> ~/.local/bin/* (mode 0744)
 │   │   ├── mcp-github-stdio                       GitHub MCP server, spawned per-connection
 │   │   └── kubernetes-mcp-kubeconfig-secret       writes the kubeconfig podman secret
-│   └── lib/                         -> ~/.local/lib/mcpod/* (mode 0644, not executable)
-│       (empty for now -- for library code home/bin/ scripts source)
+│   └── lib/
+│       └── mcpod/                   -> ~/.local/lib/mcpod/* (mode 0644, not executable)
+│           (library code home/bin/ scripts source)
 ├── env/                              -> ~/.config/mcpod/* (copied recursively, not mirrored 1:1)
 │   ├── mcp-github.env.example
 │   ├── mcp-github-systemd.env.example

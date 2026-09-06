@@ -16,34 +16,8 @@ and bats tests.
 
 ## Commands
 
-```bash
-git submodule update --init --recursive   # or: make submodules — required once after cloning
-
-make lint             # shellcheck hack/*.sh + home/bin/* + home/lib/*, and
-                       # dry-run every quadlet unit through the local `quadlet`
-                       # binary (no real systemd paths touched)
-make generate         # materialize the systemd units quadlet would produce into
-                       # .generated/dryrun-output-<commit>[-dirty].txt, for
-                       # inspecting ExecStart
-make install          # lint, then copy units to ~/.config/containers/systemd,
-                       # write env templates to ~/.config/mcpod, daemon-reload
-                       # (quadlet auto-enables via each unit's own [Install])
-make install-local    # install home/bin/* to ~/.local/bin (0744) and home/lib/*
-                       # to ~/.local/lib/mcpod (0644) -- not systemd-managed,
-                       # so this is separate from `make install`
-make uninstall        # stop, disable, remove installed units; env secrets kept
-make uninstall-purge  # uninstall, and also delete the env files
-make install-session-env    # opt-in: write the XDG_CONFIG_HOME environment.d
-                             # template to ~/.config/environment.d (skipped if
-                             # it already exists); not part of `make install`
-make uninstall-session-env  # remove the template install-session-env wrote
-make test             # fetch submodules if needed, then run the full bats suite
-make coverage         # run the bats suite under kcov, reporting hack/*.sh and
-                       # home/bin/* line coverage as HTML into
-                       # .coverage/<bats.*>/index.html
-make clean            # remove .generated/ and .coverage/
-make distclean        # clean + deinit vendored submodules
-```
+See README.md "Usage" (or run `make help`) for the full make-target list
+with one-line descriptions.
 
 Run a single test file or case directly with bats (skip the Makefile's
 submodule check if already fetched):
@@ -84,12 +58,15 @@ itself, always run from the repo checkout.
 executable entry points (installed mode `0744` by `make install-local`),
 deliberately named without a `.sh` suffix since they're meant to be run
 as plain commands once on `PATH` (`mcp-github-stdio`,
-`kubernetes-mcp-kubeconfig-secret`). `home/lib/*` (currently empty, kept
-via `.gitkeep`) is for library code a `home/bin/` script sources rather
-than runs — installed mode `0644` (never executable) to
-`~/.local/lib/mcpod`, one level below a plain `~/.local/lib/<file>`
-specifically to avoid colliding with other tools' files there. Neither is
-`hack/common.sh`: that's dev-harness-only and never installed at all.
+`kubernetes-mcp-kubeconfig-secret`). `home/lib/mcpod/*` is for library
+code a `home/bin/` script sources rather than runs — installed mode
+`0644` (never executable) to `~/.local/lib/mcpod`. The `mcpod/`
+subdirectory under `home/lib/` exists purely so the installed
+`~/.local/lib/mcpod` destination sits one level below a plain
+`~/.local/lib/<file>`, avoiding collisions with other tools' files
+there — `home/lib/mcpod/` and `~/.local/lib/mcpod/` mirror each other
+1:1 like `home/bin/` and `~/.local/bin/` do. Neither is `hack/common.sh`:
+that's dev-harness-only and never installed at all.
 
 **`env/*.example` is a separate, non-mirrored path** — despite the
 directory's name, it holds both env-file and config-file templates (e.g.
