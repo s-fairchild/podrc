@@ -34,6 +34,14 @@ install-session-env: submodules ## Install the opt-in XDG_CONFIG_HOME environmen
 uninstall-session-env: submodules ## Remove the environment.d template installed by install-session-env
 	@hack/uninstall-session-env.sh
 
+.PHONY: install-claude-mcp
+install-claude-mcp: submodules ## Register kubernetes-mcp + mcp-github with the local `claude` CLI (opt-in, requires it on PATH)
+	@hack/install-claude-mcp.sh
+
+.PHONY: uninstall-claude-mcp
+uninstall-claude-mcp: submodules ## Remove the MCP server registrations installed by install-claude-mcp
+	@hack/uninstall-claude-mcp.sh
+
 .PHONY: uninstall
 uninstall: submodules ## Stop, disable, and remove the installed quadlet units (keeps env secrets)
 	@hack/uninstall.sh

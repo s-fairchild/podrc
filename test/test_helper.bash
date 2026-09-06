@@ -25,6 +25,13 @@ setup_sandbox() {
     export SYSTEMCTL_STUB_LOG
     : >"${SYSTEMCTL_STUB_LOG}"
 
+    CLAUDE_STUB_LOG="${SANDBOX_DIR}/claude.log"
+    export CLAUDE_STUB_LOG
+    : >"${CLAUDE_STUB_LOG}"
+    CLAUDE_STUB_STATE_DIR="${SANDBOX_DIR}/claude-mcp-state"
+    export CLAUDE_STUB_STATE_DIR
+    mkdir -p "${CLAUDE_STUB_STATE_DIR}"
+
     export PATH="${FIXTURES_DIR}/bin:${PATH}"
 }
 

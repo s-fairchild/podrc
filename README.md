@@ -122,6 +122,12 @@ make install-session-env    # opt-in: write the XDG_CONFIG_HOME
                              # already exists) -- see "Session-wide
                              # XDG_CONFIG_HOME" below
 make uninstall-session-env  # remove the template install-session-env wrote
+make install-claude-mcp     # opt-in: register kubernetes-mcp and mcp-github
+                             # with the local `claude` CLI's user-scope MCP
+                             # config (skipping a name that's already
+                             # registered) -- see "Registering with Claude
+                             # Code" below
+make uninstall-claude-mcp   # remove the registrations install-claude-mcp wrote
 make test       # run the bats suite against all of the above
 make coverage   # run the bats suite under kcov, report line coverage of
                 # hack/*.sh and home/bin/* as HTML into .coverage/
@@ -132,8 +138,10 @@ make coverage   # run the bats suite under kcov, report line coverage of
 variable it supports for exactly this purpose — they never read from or
 write to your real `~/.config/containers/systemd`. Only `make install` /
 `make uninstall` / `make install-local` / `make install-session-env` /
-`make uninstall-session-env` touch real paths, and only under
-`$XDG_CONFIG_HOME` / `~/.local`.
+`make uninstall-session-env` touch real paths under `$XDG_CONFIG_HOME` /
+`~/.local`; `make install-claude-mcp` / `make uninstall-claude-mcp` are the
+one exception, touching the `claude` CLI's own user-scope config instead
+(see "Registering with Claude Code" below).
 
 ### First real install
 
@@ -167,6 +175,9 @@ write to your real `~/.config/containers/systemd`. Only `make install` /
    `claude mcp add mcp-github --scope user -- ~/.local/bin/github-mcp-server-stdio`
    for Claude Code). There's no systemd service to start for this one —
    see "Transport caveat".
+7. For Claude Code specifically, `make install-claude-mcp` does step 6's
+   `claude mcp add` for you, plus the equivalent `--transport http` add
+   for `kubernetes-mcp` — see "Registering with Claude Code" below.
 
 ## Transport caveat
 
@@ -293,8 +304,40 @@ schema against the image before relying on it, and delete the
 `Volume=`/`--config` lines plus the installed directory if you don't need
 it.
 
+## Registering with Claude Code
+
+Once the servers are actually running (`kubernetes-mcp-server.service` started,
+its `TODO(verify)` notes resolved — see "Transport caveat" — and/or
+`make install-local` done for `github-mcp-server-stdio`), point the `claude` CLI
+at them:
+
+```bash
+make install-claude-mcp    # registers both servers, skipping any name
+                            # that's already registered
+make uninstall-claude-mcp  # removes both registrations
+```
+
+This is equivalent to running, by hand:
+
+```bash
+claude mcp add --transport http kubernetes-mcp http://127.0.0.1:8081/mcp --scope user
+claude mcp add mcp-github --scope user -- ~/.local/bin/github-mcp-server-stdio
+```
+
+Both are registered at `--scope user` (available in every project, not
+project-local) since neither server is specific to this repo's checkout.
+Requires the `claude` CLI on `PATH`; `mcp-github` is skipped with a
+warning if `~/.local/bin/github-mcp-server-stdio` isn't installed yet
+(`make install-local`). Neither target is part of `make install`/`make
+uninstall` — see "Ports" below for why `kubernetes-mcp`'s URL has a
+`/mcp` path, and "Configuring each server" for where that assumption
+comes from.
+
 ## Ports
 
 `github-mcp-server-stdio` runs `stdio` and publishes no port. The Kubernetes
 service publishes to `127.0.0.1:8081` only — not exposed off the host.
-Point your MCP client's HTTP transport config at `http://127.0.0.1:8081`.
+Point your MCP client's HTTP transport config at
+`http://127.0.0.1:8081/mcp` (Streamable HTTP on path `/mcp` — see
+"Configuring each server"; `make install-claude-mcp` does this for
+Claude Code automatically).

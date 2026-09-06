@@ -121,6 +121,24 @@ scripts/make targets (`hack/install-session-env.sh` /
 `make uninstall-session-env`) instead of being folded into
 `install.sh`/`uninstall.sh`. See README.md "Session-wide XDG_CONFIG_HOME".
 
+**`hack/install-claude-mcp.sh` / `hack/uninstall-claude-mcp.sh`** register
+this repo's two MCP servers with Claude Code's own `claude mcp` config —
+`kubernetes-mcp` as a user-scope `--transport http` server pointed at
+`http://127.0.0.1:8081/mcp` (the Kubernetes service's `PublishPort=`, plus
+the `/mcp` Streamable HTTP path noted in README.md "Configuring each
+server"), `mcp-github` as a user-scope stdio server pointed at the
+installed `~/.local/bin/github-mcp-server-stdio` (skipped with a warning if
+`install-local.sh` hasn't run yet). This is a fourth, separate opt-in
+scripts/make-targets pair (`make install-claude-mcp` / `make
+uninstall-claude-mcp`), same rationale as `install-session-env.sh`: it
+writes to state this repo doesn't otherwise touch (Claude Code's own
+config, not `~/.config/mcpod`) and depends on the `claude` CLI being
+present, so it's not folded into `install.sh`/`uninstall.sh` either.
+Registering a name that already exists is a no-op (logged, not an error)
+— run `claude mcp remove <name> -s user` first to reconfigure one; this
+mirrors the skip-if-exists behavior of the `env/*.example` templates
+rather than `install-local.sh`'s always-overwrite behavior.
+
 **`hack/common.sh`** is sourced (not executed) by every other script in
 `hack/`; it defines the readonly globals `SCRIPT_DIR`, `REPO_ROOT`,
 `QUADLET_SRC_DIR`, `QUADLET_UNIT_SUFFIXES`, `ENV_EXAMPLE_DIR`,
@@ -163,16 +181,24 @@ this purpose) and dry-run into a throwaway/`.generated` dir. Only
 `install-local.sh` writes to `~/.local/bin` and
 `~/.local/lib/mcpod` — also never as root. `install-session-env.sh` /
 `uninstall-session-env.sh` write to `$XDG_CONFIG_HOME/environment.d` —
-same real-path caveat, and likewise never as root.
+same real-path caveat, and likewise never as root. `install-claude-mcp.sh` /
+`uninstall-claude-mcp.sh` write to the `claude` CLI's own user-scope MCP
+config (outside this repo's paths entirely) via `claude mcp add`/`remove`
+— same real-path caveat, and likewise never as root.
 
 **Test isolation (`test/test_helper.bash`)**: `setup_sandbox` redirects
 `HOME`/`XDG_CONFIG_HOME` into a `mktemp -d` sandbox and prepends
-`test/fixtures/bin/` (a fake `systemctl` that just logs its argv to
-`SYSTEMCTL_STUB_LOG` instead of touching the real user systemd manager) onto
-`PATH`. Any bats test exercising `install.sh`/`uninstall.sh` must call
-`setup_sandbox` in `setup()` and `teardown_sandbox` in `teardown()`. Tests
-override `QUADLET_SRC_DIR` to point at `test/fixtures/bad-quadlets/` to
-exercise the lint-failure path without touching the real quadlet units.
+`test/fixtures/bin/` onto `PATH`: a fake `systemctl` that just logs its
+argv to `SYSTEMCTL_STUB_LOG` instead of touching the real user systemd
+manager, and a fake `claude` that implements just the `mcp add`/`get`/
+`remove` subset `install-claude-mcp.sh`/`uninstall-claude-mcp.sh` use,
+tracking registered server names as files under `CLAUDE_STUB_STATE_DIR`
+(logging argv to `CLAUDE_STUB_LOG`) instead of touching the real
+`~/.claude.json`. Any bats test exercising `install.sh`/`uninstall.sh`
+must call `setup_sandbox` in `setup()` and `teardown_sandbox` in
+`teardown()`. Tests override `QUADLET_SRC_DIR` to point at
+`test/fixtures/bad-quadlets/` to exercise the lint-failure path without
+touching the real quadlet units.
 
 **Test deps are git submodules** (`test/vendor/{bats-core,bats-support,bats-assert}`),
 not vendored copies — `make test`/`make submodules` runs
