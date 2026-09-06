@@ -1,0 +1,115 @@
+#!/bin/bash
+
+set -euo pipefail
+
+: "${XTRACE:=0}"
+(( XTRACE )) && set -x
+
+get_jwt() {
+  local -r app_id="${1:-}"
+  local -r pem_podman_secret="${2:-}"
+
+  b64() { openssl base64 -e -A | tr '+/' '-_' | tr -d '='; }
+  local -xf b64
+
+  local -r now=$(date +%s)
+  local -r header=$(printf '{"alg":"RS256","typ":"JWT"}' | b64)
+  local -r payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((now - 60))" "$((now + 600))" "$app_id" | b64)
+  # shellcheck disable=SC2329
+  sig() {
+    local -r header="$1"
+    local -r payload="$2"
+    local -r pem_file="$3"
+
+    if [[ ! -f $pem_file ]]; then
+      echo "file not found: $pem_file"
+      return 1
+    fi
+
+    printf '%s.%s' \
+      "$header" \
+      "$payload" \
+    | openssl dgst \
+      -binary \
+      -sha256 \
+      -sign \
+      "$pem_file" \
+    | b64
+  }
+  local -xf sig
+
+  local -r image="registry.access.redhat.com/ubi9/ubi"
+  local -ar podman_run_options=(
+    "--rm"
+    "-i"
+    "--env=BASH_FUNC_b64%%"
+    "--env=BASH_FUNC_sig%%"
+    "--secret=${pem_podman_secret}"
+  )
+
+  local sig
+  # shellcheck disable=SC2068
+  if ! sig="$(podman run \
+    ${podman_run_options[@]} \
+    "$image" \
+      bash -c \
+        "sig $header \
+        $payload \
+        /run/secrets/${pem_podman_secret}")"; then
+
+    echo "failed to generate signature"
+    return 1
+  fi
+
+  local -r jwt="${header}.${payload}.${sig}"
+  printf "%s" "$jwt"
+}
+
+curl_github_app_installations() {
+  local jwt="${1?jwt=\$1 is required.}"
+
+  readonly github_api_version="2022-11-28"
+  readonly github_api_installations_uri="https://api.github.com/app/installations"
+
+  local -ar headers=(
+    "-H"
+    "Accept: application/vnd.github+json"
+    "-H"
+    "X-GitHub-Api-Version: ${github_api_version}"
+    "-H"
+    "Authorization: Bearer ${jwt}"
+  )
+
+  if ! curl -s \
+    "${headers[@]}" \
+    "${github_api_installations_uri}" \
+  | jq '.[] | {id, account: .account.login}'; then
+
+    echo "failed to curl github app installations."
+    return 1
+  fi
+}
+
+main() {
+  local -r app_id="${1?app_id=\$1 is required.}"
+  local -r pem_podman_secret="${2?pem_podman_secret=\$2 is required.}"
+
+  if [[ -z $app_id ]]; then
+    echo "app_id must not be empty string."
+    exit 1
+  fi
+  if ! podman secret exists "$pem_podman_secret"; then
+    echo "podman secret $pem_podman_secret not found."
+    exit 1
+  fi
+
+  local jwt
+  if ! jwt="$(get_jwt "$app_id" "$pem_podman_secret")"; then
+    echo "failed to generate JWT: $jwt"
+    exit 1
+  fi
+
+  curl_github_app_installations "$jwt"
+}
+
+main "$@"
