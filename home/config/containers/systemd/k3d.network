@@ -11,8 +11,8 @@
 Description=Shared network for MCP servers
 
 [Service]
-EnvironmentFile=-%h/.config/mcpod/%N-systemd.env
-EnvironmentFile=%h/.config/mcpod/mcp-podman-global-systemd.env
+EnvironmentFile=-%h/.config/podrc/%N-systemd.env
+EnvironmentFile=%h/.config/podrc/mcp-podman-global-systemd.env
 ExecStartPre=/bin/sh -c '[ -n "${PODMAN_LOG_LEVEL}" ] || { echo "PODMAN_LOG_LEVEL is not set" >&2; exit 1; }'
 
 [Network]

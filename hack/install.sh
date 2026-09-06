@@ -125,7 +125,7 @@ Next steps:
   4. So these keep running after you log out, and start again on boot:
      loginctl enable-linger "\$USER"
   5. Run 'make install-local' to install home/bin/*, home/lib/* to
-     ~/.local/bin, ~/.local/lib/mcpod -- separate from this target
+     ~/.local/bin, ~/.local/lib/podrc -- separate from this target
      since those aren't systemd-managed.
 EOF
 }

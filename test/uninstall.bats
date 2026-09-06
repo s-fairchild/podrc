@@ -15,7 +15,7 @@ teardown() {
   assert_success
 
   [[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]]
-  [[ -f "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env" ]]
+  [[ -f "${XDG_CONFIG_HOME}/podrc/github-mcp-server.env" ]]
 }
 
 @test "uninstall: disables units through systemctl --user" {
@@ -30,7 +30,7 @@ teardown() {
   run "${REPO_ROOT}/hack/uninstall.sh" --purge
   assert_success
 
-  [[ ! -e "${XDG_CONFIG_HOME}/mcpod" ]]
+  [[ ! -e "${XDG_CONFIG_HOME}/podrc" ]]
 }
 
 @test "make uninstall: works via the Makefile target" {

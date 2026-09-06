@@ -47,7 +47,7 @@ in `hack/coverage.sh` for what was ruled out.
 **`home/` holds everything that ends up under the user's `$HOME`; `hack/`
 never does.** `home/` mirrors destination roots the same way `config/` used
 to at repo root: `home/config/` → `$XDG_CONFIG_HOME` (usually `~/.config`),
-`home/bin/` → `~/.local/bin`, `home/lib/` → `~/.local/lib/mcpod`.
+`home/bin/` → `~/.local/bin`, `home/lib/` → `~/.local/lib/podrc`.
 Everything under one of those three lands at the identical relative path
 under its destination when installed — don't add files there that aren't
 meant to be installed verbatim. `hack/` is the opposite: the lint/generate/
@@ -58,13 +58,13 @@ itself, always run from the repo checkout.
 executable entry points (installed mode `0744` by `make install-local`),
 deliberately named without a `.sh` suffix since they're meant to be run
 as plain commands once on `PATH` (`github-mcp-server-stdio`,
-`kubernetes-mcp-kubeconfig-secret`). `home/lib/mcpod/*` is for library
+`kubernetes-mcp-kubeconfig-secret`). `home/lib/podrc/*` is for library
 code a `home/bin/` script sources rather than runs — installed mode
-`0644` (never executable) to `~/.local/lib/mcpod`. The `mcpod/`
+`0644` (never executable) to `~/.local/lib/podrc`. The `podrc/`
 subdirectory under `home/lib/` exists purely so the installed
-`~/.local/lib/mcpod` destination sits one level below a plain
+`~/.local/lib/podrc` destination sits one level below a plain
 `~/.local/lib/<file>`, avoiding collisions with other tools' files
-there — `home/lib/mcpod/` and `~/.local/lib/mcpod/` mirror each other
+there — `home/lib/podrc/` and `~/.local/lib/podrc/` mirror each other
 1:1 like `home/bin/` and `~/.local/bin/` do. Neither is `hack/common.sh`:
 that's dev-harness-only and never installed at all.
 
@@ -74,14 +74,14 @@ directory's name, it holds both env-file and config-file templates (e.g.
 `conf.d/*.toml.example` alongside the `*.env.example` files). `make
 install` copies every `*.example` file under `env/` (except
 `env/environment.d/`, installed separately — see below) into
-`~/.config/mcpod/`, recursively and preserving the path relative to
+`~/.config/podrc/`, recursively and preserving the path relative to
 `env/`, stripping only the `.example` suffix — e.g.
 `env/etc/kubernetes-mcp-server/conf.d/00-base.toml.example` lands at
-`~/.config/mcpod/etc/kubernetes-mcp-server/conf.d/00-base.toml`. It skips
+`~/.config/podrc/etc/kubernetes-mcp-server/conf.d/00-base.toml`. It skips
 any destination that already exists, so a reinstall never clobbers a
 filled-in secret or hand-edited config — there's no separate git-ignored
 overlay directory that a reinstall mirrors; the user's real files live
-directly under `~/.config/mcpod/` and are edited there. This is why these
+directly under `~/.config/podrc/` and are edited there. This is why these
 templates live outside `home/config/` instead of being mirrored — a
 mirror would tempt clobbering real values on reinstall.
 
@@ -94,7 +94,7 @@ same unit's `[Service]` section instead — read by systemd itself, not
 passed into the container — for values a unit needs outside the container,
 e.g. a podman secret name interpolated into a `Secret=` line in
 `[Container]`, or a value checked by an `ExecStartPre=` guard. All of
-these files still land in the same `~/.config/mcpod/` directory on
+these files still land in the same `~/.config/podrc/` directory on
 install; only the suffix distinguishes which unit section reads them.
 
 **A non-`.env` template (e.g. `env/etc/kubernetes-mcp-server/config.toml.example`)
@@ -110,8 +110,8 @@ isn't a flat `.env` file.
 
 **`env/environment.d/*.example` is a third, separate template path**,
 parallel to `env/*.example` but for a different destination and reader:
-`env/environment.d/mcpod.conf.example` installs (same skip-if-exists rule)
-to `~/.config/environment.d/mcpod.conf`, read by systemd --user's
+`env/environment.d/podrc.conf.example` installs (same skip-if-exists rule)
+to `~/.config/environment.d/podrc.conf`, read by systemd --user's
 environment.d generator (`environment.d(5)`) at session start, not by any
 Quadlet unit's `EnvironmentFile=`. It's opt-in and unrelated to running the
 MCP servers — everything else in this repo already falls back to
@@ -132,7 +132,7 @@ installed `~/.local/bin/github-mcp-server-stdio` (skipped with a warning if
 scripts/make-targets pair (`make install-claude-mcp` / `make
 uninstall-claude-mcp`), same rationale as `install-session-env.sh`: it
 writes to state this repo doesn't otherwise touch (Claude Code's own
-config, not `~/.config/mcpod`) and depends on the `claude` CLI being
+config, not `~/.config/podrc`) and depends on the `claude` CLI being
 present, so it's not folded into `install.sh`/`uninstall.sh` either.
 Registering a name that already exists is a no-op (logged, not an error)
 — run `claude mcp remove <name> -s user` first to reconfigure one; this
@@ -179,7 +179,7 @@ this purpose) and dry-run into a throwaway/`.generated` dir. Only
 `install.sh` and `uninstall.sh` write to real paths, and only under
 `$XDG_CONFIG_HOME` — never as root, never outside the user's own config.
 `install-local.sh` writes to `~/.local/bin` and
-`~/.local/lib/mcpod` — also never as root. `install-session-env.sh` /
+`~/.local/lib/podrc` — also never as root. `install-session-env.sh` /
 `uninstall-session-env.sh` write to `$XDG_CONFIG_HOME/environment.d` —
 same real-path caveat, and likewise never as root. `install-claude-mcp.sh` /
 `uninstall-claude-mcp.sh` write to the `claude` CLI's own user-scope MCP
@@ -238,7 +238,7 @@ upstream — no self-hosted HTTP/SSE mode exists; GitHub's own hosted
 `api.githubcopilot.com` endpoint is unrelated). `home/bin/github-mcp-server-stdio`
 is what actually runs it: an MCP client's stdio "command" points at that
 script directly, which resolves the installed env files under
-`~/.config/mcpod/` and `exec`s `podman run -i --rm ...
+`~/.config/podrc/` and `exec`s `podman run -i --rm ...
 ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
 per connection. See README.md "Transport caveat" for the full rationale
 and why `mcp-github.container` was removed rather than kept
@@ -252,7 +252,7 @@ and why `mcp-github.container` was removed rather than kept
   itself still requires literal tabs for recipe lines, but that's a `make`
   syntax requirement, not a `hack/*.sh`/`home/bin/*` convention.
   Indentation is 2 spaces everywhere (Google's own guideline) --
-  `hack/*.sh`, `home/bin/*`, `home/lib/mcpod/*.sh`, and `test/` all follow
+  `hack/*.sh`, `home/bin/*`, `home/lib/podrc/*.sh`, and `test/` all follow
   the same convention; there's no more per-directory split.
 - Every directly-run script in `hack/` puts its logic in functions and
   calls a `main "$@"` at the bottom; `hack/common.sh` is a library (only

@@ -24,13 +24,13 @@ teardown() {
   assert_output "744"
 }
 
-@test "install-local: installs home/lib/* to ~/.local/lib/mcpod with mode 0644" {
+@test "install-local: installs home/lib/* to ~/.local/lib/podrc with mode 0644" {
   HOME_BIN_SRC_DIR="${FIXTURES_DIR}/home-bin" \
     HOME_LIB_SRC_DIR="${FIXTURES_DIR}/home-lib" \
     run "${REPO_ROOT}/hack/install-local.sh"
   assert_success
 
-  dest="${HOME}/.local/lib/mcpod/helper.sh"
+  dest="${HOME}/.local/lib/podrc/helper.sh"
   [[ -f "${dest}" ]]
 
   run stat -c '%a' "${dest}"

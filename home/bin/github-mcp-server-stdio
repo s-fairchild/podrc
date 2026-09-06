@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-readonly ENV_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
+readonly ENV_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/podrc"
 readonly CONTAINER_ENV_FILE="${ENV_DIR}/github-mcp-server.env"
 
 readonly GITHUB_APP_PEM_PODMAN_SECRET_DEFAULT="github-app-private-key"

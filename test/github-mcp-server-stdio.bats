@@ -3,7 +3,7 @@
 # install-local.sh (that just copies the file -- see install-local.bats).
 # Uses its own sandbox rather than test_helper's
 # setup_sandbox/teardown_sandbox: this script never touches systemctl,
-# only $XDG_CONFIG_HOME/mcpod (or its $HOME/.config fallback) and podman,
+# only $XDG_CONFIG_HOME/podrc (or its $HOME/.config fallback) and podman,
 # so it stubs only podman (test/fixtures/podman-bin/) on top of a
 # sandboxed HOME/XDG_CONFIG_HOME.
 #
@@ -46,16 +46,16 @@ teardown() {
 }
 
 #######################################
-# Prints the sandboxed mcpod config dir.
+# Prints the sandboxed podrc config dir.
 # Globals:
 #   XDG_CONFIG_HOME
 #######################################
 mcpod_config_dir() {
-  echo "${XDG_CONFIG_HOME}/mcpod"
+  echo "${XDG_CONFIG_HOME}/podrc"
 }
 
 #######################################
-# Copies the fixture env file into the sandboxed mcpod config dir.
+# Copies the fixture env file into the sandboxed podrc config dir.
 #######################################
 write_env_file() {
   mkdir -p "$(mcpod_config_dir)"
@@ -143,8 +143,8 @@ write_env_file() {
 
 @test "github-mcp-server-stdio: falls back to \$HOME/.config when XDG_CONFIG_HOME is unset" {
   unset XDG_CONFIG_HOME
-  mkdir -p "${HOME}/.config/mcpod"
-  cp "${ENV_FIXTURES_DIR}/github-mcp-server.env" "${HOME}/.config/mcpod/github-mcp-server.env"
+  mkdir -p "${HOME}/.config/podrc"
+  cp "${ENV_FIXTURES_DIR}/github-mcp-server.env" "${HOME}/.config/podrc/github-mcp-server.env"
 
   run "${SCRIPT}"
   assert_success

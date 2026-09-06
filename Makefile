@@ -23,7 +23,7 @@ install: submodules lint ## Install quadlet units + env templates for the curren
 	@hack/install.sh
 
 .PHONY: install-local
-install-local: submodules ## Install home/bin/* to ~/.local/bin (0744), home/lib/* to ~/.local/lib/mcpod (0644)
+install-local: submodules ## Install home/bin/* to ~/.local/bin (0744), home/lib/* to ~/.local/lib/podrc (0644)
 	@hack/install-local.sh
 
 .PHONY: install-session-env

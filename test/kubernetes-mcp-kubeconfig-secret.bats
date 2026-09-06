@@ -62,7 +62,7 @@ write_fixture_kubeconfig() {
   assert_success
 
   run cat "${PODMAN_STUB_LOG}"
-  assert_output "secret create --replace --label type=kubeconfig --label app=kubernetes-mcp-server --label managed-by=mcpod kubernetes-mcp-kubeconfig ${HOME}/.kube/config"
+  assert_output "secret create --replace --label type=kubeconfig --label app=kubernetes-mcp-server --label managed-by=podrc kubernetes-mcp-kubeconfig ${HOME}/.kube/config"
 }
 
 @test "kubernetes-mcp-kubeconfig-secret: honors a KUBECONFIG_PODMAN_SECRET_NAME override" {
@@ -86,14 +86,14 @@ write_fixture_kubeconfig() {
   assert_output --partial -- "--replace"
 }
 
-@test "kubernetes-mcp-kubeconfig-secret: labels the secret type=kubeconfig, app=kubernetes-mcp-server, managed-by=mcpod" {
+@test "kubernetes-mcp-kubeconfig-secret: labels the secret type=kubeconfig, app=kubernetes-mcp-server, managed-by=podrc" {
   write_fixture_kubeconfig
 
   run "${SCRIPT}"
   assert_success
 
   run cat "${PODMAN_STUB_LOG}"
-  assert_output --partial -- "--label type=kubeconfig --label app=kubernetes-mcp-server --label managed-by=mcpod"
+  assert_output --partial -- "--label type=kubeconfig --label app=kubernetes-mcp-server --label managed-by=podrc"
 }
 
 @test "kubernetes-mcp-kubeconfig-secret: prints a confirmation naming the secret and source path" {

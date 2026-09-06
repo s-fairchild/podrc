@@ -1,4 +1,4 @@
-# mcpod
+# podrc
 
 [Podman Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
 files that run MCP (Model Context Protocol) servers as rootless, per-user
@@ -10,12 +10,12 @@ systemd services: a GitHub MCP server and a Kubernetes MCP server.
 everything under `home/config/` lands at the matching path under
 `$XDG_CONFIG_HOME` (usually `~/.config`), everything under `home/bin/` at
 the matching path under `~/.local/bin`, everything under `home/lib/` at
-the matching path under `~/.local/lib/mcpod`. `hack/` is the
+the matching path under `~/.local/lib/podrc`. `hack/` is the
 opposite: the lint/generate/install/uninstall harness that operates on
 `home/`, never itself installed anywhere.
 
 ```
-mcpod/
+podrc/
 ├── home/
 │   ├── config/
 │   │   └── containers/
@@ -33,9 +33,9 @@ mcpod/
 │   │   ├── ignition                               containerized ignition-validate
 │   │   └── yq                                     containerized yq
 │   └── lib/
-│       └── mcpod/                   -> ~/.local/lib/mcpod/* (mode 0644, not executable)
+│       └── podrc/                   -> ~/.local/lib/podrc/* (mode 0644, not executable)
 │           (library code home/bin/ scripts source)
-├── env/                              -> ~/.config/mcpod/* (copied recursively, not mirrored 1:1)
+├── env/                              -> ~/.config/podrc/* (copied recursively, not mirrored 1:1)
 │   ├── github-mcp-server.env.example
 │   ├── kubernetes-mcp.env.example
 │   ├── kubernetes-mcp-systemd.env.example
@@ -46,7 +46,7 @@ mcpod/
 │   │           ├── 00-base.toml.example
 │   │           └── ...
 │   └── environment.d/                -> ~/.config/environment.d/* (opt-in, see below)
-│       └── mcpod.conf.example
+│       └── podrc.conf.example
 ├── hack/                             lint/generate/install/install-local/uninstall, called by the Makefile
 ├── test/                             bats test suite for the Makefile targets
 │   └── vendor/                       bats-core, bats-support, bats-assert (git submodules)
@@ -61,13 +61,13 @@ There's no `mcp-github.container` — `github-mcp-server` only supports the
 config file (e.g. `etc/kubernetes-mcp-server/config.toml.example`). `make
 install` copies every `*.example` file under `env/` (except
 `env/environment.d/`, installed separately — see "Session-wide
-XDG_CONFIG_HOME" below) into `~/.config/mcpod/`, recursively and
+XDG_CONFIG_HOME" below) into `~/.config/podrc/`, recursively and
 preserving the path relative to `env/`, dropping only the `.example`
 suffix — e.g. `env/etc/kubernetes-mcp-server/conf.d/00-base.toml.example`
-lands at `~/.config/mcpod/etc/kubernetes-mcp-server/conf.d/00-base.toml`.
+lands at `~/.config/podrc/etc/kubernetes-mcp-server/conf.d/00-base.toml`.
 This happens **only if that destination doesn't already exist**, so real
 secrets or hand-edited config are never clobbered by a reinstall — edit
-them in place under `~/.config/mcpod/` afterwards. None of it lives under
+them in place under `~/.config/podrc/` afterwards. None of it lives under
 `home/config/` (which is a straight filesystem mirror you might otherwise
 be tempted to symlink wholesale).
 
@@ -82,7 +82,7 @@ podman secret name substituted into a `Secret=` line, or checked by an
 is neither — it isn't `EnvironmentFile=`'d in, its installed directory is
 bind-mounted by a `Volume=` line straight into the container at the path
 `kubernetes-mcp-server.container`'s `Exec=` points `--config` at. All three kinds
-land in the same `~/.config/mcpod/` directory on install, distinguished by
+land in the same `~/.config/podrc/` directory on install, distinguished by
 name/suffix.
 
 ## Prerequisites
@@ -110,11 +110,11 @@ make lint       # dry-run every quadlet unit through the local `quadlet`
 make generate   # materialize the systemd units quadlet would produce into
                 # .generated/, so you can eyeball the resulting ExecStart
 make install    # lint, then copy units to ~/.config/containers/systemd,
-                # write env templates to ~/.config/mcpod (skipping
+                # write env templates to ~/.config/podrc (skipping
                 # any that already exist), daemon-reload (quadlet
                 # auto-enables via each unit's own [Install])
 make install-local  # install home/bin/* to ~/.local/bin (0744) and
-                     # home/lib/* to ~/.local/lib/mcpod (0644) --
+                     # home/lib/* to ~/.local/lib/podrc (0644) --
                      # not systemd-managed, so separate from `make install`
 make uninstall  # stop, disable, and remove the installed units;
                 # env files (secrets) are left in place
@@ -151,7 +151,7 @@ one exception, touching the `claude` CLI's own user-scope config instead
 ### First real install
 
 1. `make install`
-2. Fill in real values in `~/.config/mcpod/github-mcp-server.env`
+2. Fill in real values in `~/.config/podrc/github-mcp-server.env`
    (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`,
    `GITHUB_APP_PEM_PODMAN_SECRET`), `kubernetes-mcp.env`, and
    `kubernetes-mcp-systemd.env` (kubeconfig path, etc). Create the GitHub
@@ -163,7 +163,7 @@ one exception, touching the `claude` CLI's own user-scope config instead
    `make install-local`) — it reads `~/.kube/config` and replaces the
    `KUBECONFIG_PODMAN_SECRET_NAME` secret, so re-run it whenever that
    kubeconfig changes. Edit
-   `~/.config/mcpod/etc/kubernetes-mcp-server/{config.toml,conf.d/*.toml}`
+   `~/.config/podrc/etc/kubernetes-mcp-server/{config.toml,conf.d/*.toml}`
    too if you need `--config`-driven settings; drop the matching
    `Volume=`/`--config` lines in `kubernetes-mcp-server.container` if you don't.
 3. Resolve the `TODO(verify)` notes in `kubernetes-mcp-server.container` and
@@ -224,7 +224,7 @@ endpoint at `api.githubcopilot.com`, not something this image can serve
 standalone), so there's no `mcp-github.container` in this repo at all.
 Instead, `home/bin/github-mcp-server-stdio` is what an MCP client's stdio
 "command" points at directly: it resolves the installed env files under
-`~/.config/mcpod/` and `exec`s `podman run -i --rm ...
+`~/.config/podrc/` and `exec`s `podman run -i --rm ...
 ghcr.io/github/github-mcp-server:latest stdio` — one throwaway container
 per connection, never a resident service. `github-mcp-server.image` still
 exists as a Quadlet unit purely to keep that image pulled/current
@@ -251,8 +251,8 @@ or anything else started outside a login shell — they'd still see
 `~/.config`.
 
 `make install-session-env` covers that gap: it writes
-`env/environment.d/mcpod.conf.example` to
-`~/.config/environment.d/mcpod.conf` (skipping it if that destination
+`env/environment.d/podrc.conf.example` to
+`~/.config/environment.d/podrc.conf` (skipping it if that destination
 already exists, same skip-if-exists behavior as the `env/*.example`
 templates `make install` writes). Uncomment its `XDG_CONFIG_HOME=` line
 and edit the value, then log out and back in (or run
@@ -264,7 +264,7 @@ nothing else here depends on it.
 
 ## Configuring each server
 
-The env files under `env/` (installed to `~/.config/mcpod/`) only
+The env files under `env/` (installed to `~/.config/podrc/`) only
 cover the settings this repo currently sets. Both servers accept more —
 consult upstream for the full list before adding new keys.
 
@@ -325,7 +325,7 @@ complete flag/TOML reference.
 `--config` is wired up in this repo via
 `env/etc/kubernetes-mcp-server/config.toml.example` and
 `conf.d/*.toml.example` (installed to
-`~/.config/mcpod/etc/kubernetes-mcp-server/`, bind-mounted read-only as a
+`~/.config/podrc/etc/kubernetes-mcp-server/`, bind-mounted read-only as a
 whole directory by the `Volume=` line in `kubernetes-mcp-server.container` at
 `/etc/kubernetes-mcp-server`, the path `Exec=` points `--config` at).
 Their keys are a best-effort mirror of the CLI flags and carry the same

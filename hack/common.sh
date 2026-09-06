@@ -23,19 +23,19 @@ set -o errexit \
 #                     installed separately (see below)
 #   ENVIRONMENT_D_EXAMPLE_DIR - env/environment.d/*.example templates
 #                     copied by install-session-env.sh into
-#                     $XDG_CONFIG_HOME/environment.d/, e.g. mcpod.conf.example
+#                     $XDG_CONFIG_HOME/environment.d/, e.g. podrc.conf.example
 #                     -- separate from ENV_EXAMPLE_DIR because these land in
-#                     environment.d/, not mcpod/, and are read by
+#                     environment.d/, not podrc/, and are read by
 #                     systemd --user's environment.d generator, not
 #                     EnvironmentFile=
 #   HOME_BIN_SRC_DIR - home/bin/, installable scripts install-local.sh
 #                     copies into ~/.local/bin (mode 0744). Overridable via
 #                     env var so tests can point it at a fixture directory.
-#   HOME_LIB_SRC_DIR - home/lib/mcpod/, library files (sourced by home/bin/
+#   HOME_LIB_SRC_DIR - home/lib/podrc/, library files (sourced by home/bin/
 #                     scripts, never executed directly) install-local.sh
-#                     copies into ~/.local/lib/mcpod (mode 0644). The
-#                     mcpod/ subdirectory under home/lib/ mirrors the
-#                     ~/.local/lib/mcpod destination 1:1, same as
+#                     copies into ~/.local/lib/podrc (mode 0644). The
+#                     podrc/ subdirectory under home/lib/ mirrors the
+#                     ~/.local/lib/podrc destination 1:1, same as
 #                     home/config/ and home/bin/ mirror theirs.
 #                     Overridable via env var so tests can point it at a
 #                     fixture directory.
@@ -64,7 +64,7 @@ readonly ENVIRONMENT_D_EXAMPLE_DIR="${REPO_ROOT}/env/environment.d"
 HOME_BIN_SRC_DIR="${HOME_BIN_SRC_DIR:-${REPO_ROOT}/home/bin}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_BIN_SRC_DIR
-HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib/mcpod}"
+HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib/podrc}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_LIB_SRC_DIR
 
@@ -165,7 +165,7 @@ install_config_dir() {
 #   Writes the resolved path to stdout.
 #######################################
 install_env_dir() {
-  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/podrc"
 }
 
 #######################################
@@ -187,12 +187,12 @@ install_bin_dir() {
 }
 
 #######################################
-# Prints the dir home/lib/mcpod/* files install to.
+# Prints the dir home/lib/podrc/* files install to.
 # Outputs:
 #   Writes the resolved path to stdout.
 #######################################
 install_lib_dir() {
-  echo "${HOME}/.local/lib/mcpod"
+  echo "${HOME}/.local/lib/podrc"
 }
 
 #######################################

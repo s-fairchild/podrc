@@ -61,7 +61,7 @@ print_next_steps() {
   cat <<EOF
 
 Next steps:
-  1. Edit ${environment_d_dir}/mcpod.conf and uncomment XDG_CONFIG_HOME if
+  1. Edit ${environment_d_dir}/podrc.conf and uncomment XDG_CONFIG_HOME if
      you want it somewhere other than the ~/.config default.
   2. Log out and back in (or run 'systemctl --user daemon-reexec') for
      systemd --user's environment.d generator to pick it up.

@@ -1,4 +1,4 @@
-# Copy to $XDG_CONFIG_HOME/mcpod/kubernetes-mcp.toml (make install
+# Copy to $XDG_CONFIG_HOME/podrc/kubernetes-mcp.toml (make install
 # does this automatically if the destination doesn't already exist) and
 # adjust as needed. Mounted read-only into the container by the
 # Volume= line in kubernetes-mcp.container, at the path given by CONFIG

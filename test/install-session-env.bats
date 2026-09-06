@@ -13,14 +13,14 @@ teardown() {
   run "${REPO_ROOT}/hack/install-session-env.sh"
   assert_success
 
-  [[ -f "${XDG_CONFIG_HOME}/environment.d/mcpod.conf" ]]
-  run grep -q '#XDG_CONFIG_HOME=%h/.config' "${XDG_CONFIG_HOME}/environment.d/mcpod.conf"
+  [[ -f "${XDG_CONFIG_HOME}/environment.d/podrc.conf" ]]
+  run grep -q '#XDG_CONFIG_HOME=%h/.config' "${XDG_CONFIG_HOME}/environment.d/podrc.conf"
   assert_success
 }
 
 @test "install-session-env: never overwrites an existing conf file" {
   "${REPO_ROOT}/hack/install-session-env.sh"
-  dest="${XDG_CONFIG_HOME}/environment.d/mcpod.conf"
+  dest="${XDG_CONFIG_HOME}/environment.d/podrc.conf"
   echo 'XDG_CONFIG_HOME=%h/.config-custom' >"${dest}"
 
   run "${REPO_ROOT}/hack/install-session-env.sh"
@@ -37,7 +37,7 @@ teardown() {
 
 @test "uninstall-session-env: removes the installed conf file" {
   "${REPO_ROOT}/hack/install-session-env.sh"
-  dest="${XDG_CONFIG_HOME}/environment.d/mcpod.conf"
+  dest="${XDG_CONFIG_HOME}/environment.d/podrc.conf"
   [[ -f "${dest}" ]]
 
   run "${REPO_ROOT}/hack/uninstall-session-env.sh"
@@ -57,5 +57,5 @@ teardown() {
   run make -C "${REPO_ROOT}" uninstall-session-env
   assert_success
 
-  [[ ! -e "${XDG_CONFIG_HOME}/environment.d/mcpod.conf" ]]
+  [[ ! -e "${XDG_CONFIG_HOME}/environment.d/podrc.conf" ]]
 }

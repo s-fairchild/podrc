@@ -12,11 +12,11 @@
 # The optional config directory (a main config.toml plus ordered
 # conf.d/*.toml drop-ins) is mounted the same way, as a whole directory:
 # the Volume= line below binds
-# $XDG_CONFIG_HOME/mcpod/etc/kubernetes-mcp-server read-only at
+# $XDG_CONFIG_HOME/podrc/etc/kubernetes-mcp-server read-only at
 # /etc/kubernetes-mcp-server in the container. `make install` writes that
 # source directory's contents from env/etc/kubernetes-mcp-server/*.example
 # (skipping any file that already exists, same as every other env
-# template) -- edit them directly under $XDG_CONFIG_HOME/mcpod/ after
+# template) -- edit them directly under $XDG_CONFIG_HOME/podrc/ after
 # install; they're never overwritten by a reinstall. If you don't need
 # this, drop the --config/--config-dir flags and the Volume= line below,
 # and leave that installed directory empty.
@@ -28,7 +28,7 @@ Requires=mcp-network.service
 Wants=network-online.target
 
 [Service]
-EnvironmentFile=%h/.config/mcpod/kubernetes-mcp-systemd.env
+EnvironmentFile=%h/.config/podrc/kubernetes-mcp-systemd.env
 ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
 
@@ -38,8 +38,8 @@ ContainerName=%N
 Network=mcp.network
 PublishPort=127.0.0.1:8081:8081
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
-Volume=%h/.config/mcpod/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z,U
-EnvironmentFile=%h/.config/mcpod/kubernetes-mcp.env
+Volume=%h/.config/podrc/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z,U
+EnvironmentFile=%h/.config/podrc/kubernetes-mcp.env
 Exec=--config /etc/kubernetes-mcp-server/config.toml
 AutoUpdate=registry
 HealthCmd=CMD-SHELL curl -sf http://localhost:8081/healthz || exit 1

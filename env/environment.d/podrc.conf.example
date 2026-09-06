@@ -1,4 +1,4 @@
-# Copy to $XDG_CONFIG_HOME/environment.d/mcpod.conf (make
+# Copy to $XDG_CONFIG_HOME/environment.d/podrc.conf (make
 # install-session-env does this automatically if the destination doesn't
 # already exist) to set XDG_CONFIG_HOME session-wide, read by
 # systemd --user's environment.d generator (environment.d(5)) at session

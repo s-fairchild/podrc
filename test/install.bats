@@ -24,8 +24,8 @@ teardown() {
   run "${REPO_ROOT}/hack/install.sh"
   assert_success
 
-  [[ -f "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env" ]]
-  run grep -q 'GITHUB_APP_PEM_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env"
+  [[ -f "${XDG_CONFIG_HOME}/podrc/github-mcp-server.env" ]]
+  run grep -q 'GITHUB_APP_PEM_PODMAN_SECRET="github-app-private-key"' "${XDG_CONFIG_HOME}/podrc/github-mcp-server.env"
   assert_success
 }
 
@@ -33,13 +33,13 @@ teardown() {
   run "${REPO_ROOT}/hack/install.sh"
   assert_success
 
-  [[ -f "${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/config.toml" ]]
-  [[ -f "${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/conf.d/00-base.toml" ]]
+  [[ -f "${XDG_CONFIG_HOME}/podrc/etc/kubernetes-mcp-server/config.toml" ]]
+  [[ -f "${XDG_CONFIG_HOME}/podrc/etc/kubernetes-mcp-server/conf.d/00-base.toml" ]]
 }
 
 @test "install: never overwrites an existing nested config file" {
   "${REPO_ROOT}/hack/install.sh"
-  dest="${XDG_CONFIG_HOME}/mcpod/etc/kubernetes-mcp-server/config.toml"
+  dest="${XDG_CONFIG_HOME}/podrc/etc/kubernetes-mcp-server/config.toml"
   echo "log_level = 1" >"${dest}"
 
   run "${REPO_ROOT}/hack/install.sh"
@@ -49,16 +49,16 @@ teardown() {
   assert_success
 }
 
-@test "install: does not install env/environment.d templates under XDG_CONFIG_HOME/mcpod" {
+@test "install: does not install env/environment.d templates under XDG_CONFIG_HOME/podrc" {
   run "${REPO_ROOT}/hack/install.sh"
   assert_success
 
-  [[ ! -e "${XDG_CONFIG_HOME}/mcpod/environment.d" ]]
+  [[ ! -e "${XDG_CONFIG_HOME}/podrc/environment.d" ]]
 }
 
 @test "install: never overwrites an existing env file" {
   "${REPO_ROOT}/hack/install.sh"
-  env_file="${XDG_CONFIG_HOME}/mcpod/github-mcp-server.env"
+  env_file="${XDG_CONFIG_HOME}/podrc/github-mcp-server.env"
   echo 'GITHUB_APP_PEM_PODMAN_SECRET="real-secret-name"' >"${env_file}"
 
   run "${REPO_ROOT}/hack/install.sh"
