@@ -36,16 +36,13 @@ ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} |
 Image=kubernetes-mcp-server.image
 ContainerName=%N
 Network=mcp.network
-PublishPort=127.0.0.1:8082:8082
+PublishPort=127.0.0.1:8081:8081
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
-Volume=%h/.config/mcpod/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z
+Volume=%h/.config/mcpod/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z,U
 EnvironmentFile=%h/.config/mcpod/kubernetes-mcp.env
-Exec=--cluster-provider kubeconfig \
-     --config /etc/kubernetes-mcp-server/config.toml \
-     --log-file stderr \
-     --log-level ${LOG_LEVEL}
+Exec=--config /etc/kubernetes-mcp-server/config.toml
 AutoUpdate=registry
-HealthCmd=CMD-SHELL curl -sf http://localhost:8082/healthz || exit 1
+HealthCmd=CMD-SHELL curl -sf http://localhost:8081/healthz || exit 1
 HealthInterval=30s
 HealthRetries=3
 

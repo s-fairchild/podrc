@@ -293,5 +293,5 @@ it.
 ## Ports
 
 `mcp-github-stdio` runs `stdio` and publishes no port. The Kubernetes
-service publishes to `127.0.0.1:8082` only — not exposed off the host.
-Point your MCP client's HTTP transport config at `http://127.0.0.1:8082`.
+service publishes to `127.0.0.1:8081` only — not exposed off the host.
+Point your MCP client's HTTP transport config at `http://127.0.0.1:8081`.

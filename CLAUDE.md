@@ -271,7 +271,7 @@ and why `mcp-github.container` was removed rather than kept
   entirely (see above) and write diagnostics straight to stderr with `echo`.
 - Quadlet units use `%h` for the invoking user's home directory
   (systemd specifier), not `$HOME`.
-- The Kubernetes service publishes only to `127.0.0.1:8082` — never bind a
+- The Kubernetes service publishes only to `127.0.0.1:8081` — never bind a
   published port to a wider interface without updating the README's
   "Ports" section too. The GitHub server publishes nothing; it has no
   Quadlet-managed container (see "Architecture" above).
