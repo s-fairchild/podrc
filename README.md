@@ -23,7 +23,7 @@ mcpod/
 │   │           ├── mcp.network                    shared podman network
 │   │           ├── github-mcp-server.image        GitHub MCP server image pull
 │   │           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
-│   │           └── kubernetes-mcp-server.container       Kubernetes MCP server
+│   │           └── kubernetes-mcp-server.container  Kubernetes MCP server
 │   ├── bin/                         -> ~/.local/bin/* (mode 0744)
 │   │   ├── github-mcp-server-stdio                GitHub MCP server, spawned per-connection
 │   │   └── kubernetes-mcp-kubeconfig-secret       writes the kubeconfig podman secret

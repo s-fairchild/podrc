@@ -2,7 +2,9 @@
 # Shared paths/helpers sourced by the other hack/*.sh entry points.
 # Not meant to be run directly.
 
-set -euo pipefail
+set -o errexit \
+  -o nounset \
+  -o pipefail
 
 # Globals (readonly, set once at source time):
 #   SCRIPT_DIR      - absolute path to hack/, used to locate sibling files
@@ -11,7 +13,7 @@ set -euo pipefail
 #                     env var so tests can point it at a fixture directory
 #                     instead of home/config/containers/systemd
 #   QUADLET_UNIT_SUFFIXES - quadlet unit file extensions this repo installs/
-#                     removes/inspects, e.g. kubernetes-mcp-server.container or
+#                     removes/inspects, e.g. kubernetes-mcp.container or
 #                     mcp.network
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, recursively and preserving relative
@@ -46,14 +48,14 @@ QUADLET_SRC_DIR="${QUADLET_SRC_DIR:-${REPO_ROOT}/home/config/containers/systemd}
 readonly QUADLET_SRC_DIR
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly QUADLET_UNIT_SUFFIXES=(
-    container
-    volume
-    network
-    kube
-    image
-    build
-    pod
-    artifact
+  container
+  volume
+  network
+  kube
+  image
+  build
+  pod
+  artifact
 )
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly ENV_EXAMPLE_DIR="${REPO_ROOT}/env"
@@ -66,8 +68,7 @@ HOME_LIB_SRC_DIR="${HOME_LIB_SRC_DIR:-${REPO_ROOT}/home/lib/mcpod}"
 # shellcheck disable=SC2034 # consumed by scripts that source this file
 readonly HOME_LIB_SRC_DIR
 
-# init_logging
-#
+#######################################
 # Sources the vendored bash-logger module (if not already loaded) and
 # initializes it under this process's script name, exposing log_debug/
 # log_info/log_warn/log_error/... to the caller. Call as the first step
@@ -77,213 +78,288 @@ readonly HOME_LIB_SRC_DIR
 # falsy (and so fatal under `set -e`) on its first iteration even though
 # init_logger itself returns 0 -- shield the call and restore the
 # caller's errexit state afterwards.
+# Globals:
+#   REPO_ROOT
+# Outputs:
+#   Writes an error to stderr if the vendored bash-logger submodule is
+#   missing.
+# Returns:
+#   1 if the vendored bash-logger submodule isn't present, 0 otherwise.
+#######################################
 init_logging() {
-    if ! declare -f init_logger >/dev/null 2>&1; then
-        local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
-        if [[ ! -f "${logger_entry}" ]]; then
-            local msg="error: ${logger_entry} not found. "
-            msg+="Run: git submodule update --init --recursive"
-            echo "${msg}" >&2
-            return 1
-        fi
-        # shellcheck source=../vendor/bash-logger/logging.sh
-        source "${logger_entry}"
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    local logger_entry="${REPO_ROOT}/vendor/bash-logger/logging.sh"
+    if [[ ! -f "${logger_entry}" ]]; then
+      local msg="error: ${logger_entry} not found. "
+      msg+="Run: git submodule update --init --recursive"
+      echo "${msg}" >&2
+      return 1
     fi
+    # shellcheck source=../vendor/bash-logger/logging.sh
+    . "${logger_entry}"
+  fi
 
-    local -a init_logger_options=("--name" "$(basename "$0")")
-    local logger_dev_config="${REPO_ROOT}/hack/etc/bash-logger/logging-dev.conf"
-    [[ -f "${logger_dev_config}" ]] && init_logger_options+=("--config" "${logger_dev_config}")
-    readonly init_logger_options
+  local -a init_logger_options=("--name" "$(basename "$0")")
+  local logger_dev_config="${REPO_ROOT}/hack/etc/bash-logger/logging-dev.conf"
+  [[ -f "${logger_dev_config}" ]] && init_logger_options+=("--config" "${logger_dev_config}")
+  readonly init_logger_options
 
-    local errexit_was_set=0
-    [[ $- == *e* ]] && errexit_was_set=1
+  local errexit_was_set=0
+  [[ $- == *e* ]] && errexit_was_set=1
 
-    set +e
+  set +e
 
-    # shellcheck disable=SC2068
-    init_logger ${init_logger_options[@]}
+  # shellcheck disable=SC2068
+  init_logger ${init_logger_options[@]}
 
-    (( errexit_was_set )) && set -e
+  (( errexit_was_set )) && set -e
 
-    return 0
+  return 0
 }
 
-# resolve_quadlet_bin
-#
+#######################################
 # Prints the path to the local quadlet binary. Overridable via QUADLET_BIN
 # for non-standard installs.
+# Globals:
+#   QUADLET_BIN
+# Outputs:
+#   Writes the resolved quadlet binary path to stdout, or an error to the
+#   log if none is found.
+# Returns:
+#   1 if no quadlet binary is found.
+#######################################
 resolve_quadlet_bin() {
-    if [[ -n "${QUADLET_BIN:-}" ]]; then
-        echo "${QUADLET_BIN}"
-        return 0
+  if [[ -n "${QUADLET_BIN:-}" ]]; then
+    echo "${QUADLET_BIN}"
+    return 0
+  fi
+
+  local candidate
+
+  for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
+    if [[ -x "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
     fi
+  done
 
-    local candidate
+  log_error "quadlet binary not found" \
+    "(looked in /usr/libexec/podman, /usr/lib/podman)."
+  log_error "set QUADLET_BIN=/path/to/quadlet to override."
 
-    for candidate in /usr/libexec/podman/quadlet /usr/lib/podman/quadlet; do
-        if [[ -x "${candidate}" ]]; then
-            echo "${candidate}"
-            return 0
-        fi
-    done
-
-    log_error "quadlet binary not found" \
-        "(looked in /usr/libexec/podman, /usr/lib/podman)."
-    log_error "set QUADLET_BIN=/path/to/quadlet to override."
-
-    return 1
+  return 1
 }
 
+#######################################
+# Prints the systemd --user config dir quadlet units install to.
+# Outputs:
+#   Writes the resolved path to stdout.
+#######################################
 install_config_dir() {
-    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
 }
 
+#######################################
+# Prints the dir env/*.example templates install to.
+# Outputs:
+#   Writes the resolved path to stdout.
+#######################################
 install_env_dir() {
-    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/mcpod"
 }
 
+#######################################
+# Prints the dir env/environment.d/*.example templates install to.
+# Outputs:
+#   Writes the resolved path to stdout.
+#######################################
 install_environment_d_dir() {
-    echo "${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
+  echo "${XDG_CONFIG_HOME:-${HOME}/.config}/environment.d"
 }
 
+#######################################
+# Prints the dir home/bin/* scripts install to.
+# Outputs:
+#   Writes the resolved path to stdout.
+#######################################
 install_bin_dir() {
-    echo "${HOME}/.local/bin"
+  echo "${HOME}/.local/bin"
 }
 
+#######################################
+# Prints the dir home/lib/mcpod/* files install to.
+# Outputs:
+#   Writes the resolved path to stdout.
+#######################################
 install_lib_dir() {
-    echo "${HOME}/.local/lib/mcpod"
+  echo "${HOME}/.local/lib/mcpod"
 }
 
-# list_dir_files dir
-#
+#######################################
 # Prints the path to every non-hidden regular file directly under dir (no
 # recursion), one per line, or nothing if dir doesn't exist or has none.
 # Used to discover home/bin/*, home/lib/* installables/lint targets
 # without assuming a file extension -- home/bin/* deliberately have none.
+# Arguments:
+#   dir: directory to list
+# Outputs:
+#   Writes each matching file's path to stdout, one per line.
+#######################################
 list_dir_files() {
-    local dir="$1"
+  local dir="$1"
 
-    local -a entries=()
-    shopt -s nullglob
-    entries=("${dir}"/*)
-    shopt -u nullglob
+  local -a entries=()
+  shopt -s nullglob
+  entries=("${dir}"/*)
+  shopt -u nullglob
 
-    local f
-    for f in "${entries[@]}"; do
-        [[ -f "${f}" && "$(basename "${f}")" != .* ]] && printf '%s\n' "${f}"
-    done
+  local f
+  for f in "${entries[@]}"; do
+    [[ -f "${f}" && "$(basename "${f}")" != .* ]] && printf '%s\n' "${f}"
+  done
 }
 
-# list_quadlet_units
-#
+#######################################
 # Prints the path to every quadlet unit file (one per QUADLET_UNIT_SUFFIXES
 # entry, e.g. *.container, *.network, *.image) present in QUADLET_SRC_DIR,
 # one per line. install.sh/uninstall.sh derive what to install/remove from
 # this instead of a hardcoded file list.
+# Globals:
+#   QUADLET_SRC_DIR
+#   QUADLET_UNIT_SUFFIXES
+# Outputs:
+#   Writes each matching unit file's path to stdout, one per line.
+#######################################
 list_quadlet_units() {
-    local suffix
-    local -a matches
-    shopt -s nullglob
-    for suffix in "${QUADLET_UNIT_SUFFIXES[@]}"; do
-        matches=("${QUADLET_SRC_DIR}"/*."${suffix}")
-        (( ${#matches[@]} > 0 )) && printf '%s\n' "${matches[@]}"
-    done
-    shopt -u nullglob
+  local suffix
+  local -a matches
+  shopt -s nullglob
+  for suffix in "${QUADLET_UNIT_SUFFIXES[@]}"; do
+    matches=("${QUADLET_SRC_DIR}"/*."${suffix}")
+    (( ${#matches[@]} > 0 )) && printf '%s\n' "${matches[@]}"
+  done
+  shopt -u nullglob
 }
 
-# container_service_names
-#
+#######################################
 # Prints the systemd service name Quadlet generates for each *.container
-# unit in QUADLET_SRC_DIR (kubernetes-mcp-server.container -> kubernetes-mcp-server.service),
+# unit in QUADLET_SRC_DIR (kubernetes-mcp.container -> kubernetes-mcp.service),
 # one per line. install.sh/uninstall.sh derive which services to
 # start/stop from this instead of a hardcoded mcp-*.service list.
+# Globals:
+#   QUADLET_SRC_DIR
+# Outputs:
+#   Writes each service name to stdout, one per line.
+#######################################
 container_service_names() {
-    local unit
-    shopt -s nullglob
-    for unit in "${QUADLET_SRC_DIR}"/*.container; do
-        printf '%s.service\n' "$(basename "${unit}" .container)"
-    done
-    shopt -u nullglob
+  local unit
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.container; do
+    printf '%s.service\n' "$(basename "${unit}" .container)"
+  done
+  shopt -u nullglob
 }
 
-# network_service_names
-#
+#######################################
 # Prints the systemd service name Quadlet generates for each *.network
 # unit in QUADLET_SRC_DIR (mcp.network -> mcp-network.service), one per
 # line. uninstall.sh stops these directly (rather than calling `podman
 # network rm`) so that NetworkDeleteOnStop=true on the unit handles
 # actually removing the podman network.
+# Globals:
+#   QUADLET_SRC_DIR
+# Outputs:
+#   Writes each service name to stdout, one per line.
+#######################################
 network_service_names() {
-    local unit
-    shopt -s nullglob
-    for unit in "${QUADLET_SRC_DIR}"/*.network; do
-        printf '%s-network.service\n' "$(basename "${unit}" .network)"
-    done
-    shopt -u nullglob
+  local unit
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.network; do
+    printf '%s-network.service\n' "$(basename "${unit}" .network)"
+  done
+  shopt -u nullglob
 }
 
-# quadlet_unit_value unit_file key
-#
+#######################################
 # Prints the value of the first "key=value" line found in unit_file
 # (e.g. key=ContainerName), or nothing if key isn't set.
+# Arguments:
+#   unit_file: quadlet unit file to read
+#   key: the key to look up
+# Outputs:
+#   Writes the value to stdout, or nothing if key isn't set.
+#######################################
 quadlet_unit_value() {
-    local unit_file="$1" key="$2"
+  local unit_file="$1" key="$2"
 
-    awk -F= -v k="${key}" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' \
-        "${unit_file}"
+  awk -F= -v k="${key}" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' \
+    "${unit_file}"
 }
 
-# resolve_unit_specifiers value unit_file
-#
+#######################################
 # Expands the %N systemd specifier (the unit's own name, sans type
 # suffix) in value. The units in this repo only rely on %N; extend this
 # if a future unit needs another specifier (%h, %n, ...).
+# Arguments:
+#   value: string to expand %N in
+#   unit_file: unit file whose basename (sans suffix) becomes %N
+# Outputs:
+#   Writes the expanded value to stdout.
+#######################################
 resolve_unit_specifiers() {
-    local value="$1" unit_file="$2"
-    local base
-    base="$(basename "${unit_file}")"
-    base="${base%.*}"
+  local value="$1" unit_file="$2"
+  local base
+  base="$(basename "${unit_file}")"
+  base="${base%.*}"
 
-    printf '%s\n' "${value//%N/${base}}"
+  printf '%s\n' "${value//%N/${base}}"
 }
 
-# quadlet_container_names
-#
+#######################################
 # Prints the podman container name Quadlet creates for each *.container
 # unit in QUADLET_SRC_DIR, one per line: ContainerName= (with %N
 # resolved) when set, otherwise the unit's own basename -- Quadlet's
 # default when ContainerName= is absent.
+# Globals:
+#   QUADLET_SRC_DIR
+# Outputs:
+#   Writes each container name to stdout, one per line.
+#######################################
 quadlet_container_names() {
-    local unit name
-    shopt -s nullglob
-    for unit in "${QUADLET_SRC_DIR}"/*.container; do
-        name="$(quadlet_unit_value "${unit}" ContainerName)"
-        if [[ -n "${name}" ]]; then
-            name="$(resolve_unit_specifiers "${name}" "${unit}")"
-        else
-            name="$(basename "${unit}" .container)"
-        fi
-        printf '%s\n' "${name}"
-    done
-    shopt -u nullglob
+  local unit name
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.container; do
+    name="$(quadlet_unit_value "${unit}" ContainerName)"
+    if [[ -n "${name}" ]]; then
+      name="$(resolve_unit_specifiers "${name}" "${unit}")"
+    else
+      name="$(basename "${unit}" .container)"
+    fi
+    printf '%s\n' "${name}"
+  done
+  shopt -u nullglob
 }
 
-# quadlet_network_names
-#
+#######################################
 # Prints the podman network name Quadlet creates for each *.network unit
 # in QUADLET_SRC_DIR, one per line: NetworkName= (with %N resolved) when
 # set, otherwise the unit's own basename.
+# Globals:
+#   QUADLET_SRC_DIR
+# Outputs:
+#   Writes each network name to stdout, one per line.
+#######################################
 quadlet_network_names() {
-    local unit name
-    shopt -s nullglob
-    for unit in "${QUADLET_SRC_DIR}"/*.network; do
-        name="$(quadlet_unit_value "${unit}" NetworkName)"
-        if [[ -n "${name}" ]]; then
-            name="$(resolve_unit_specifiers "${name}" "${unit}")"
-        else
-            name="$(basename "${unit}" .network)"
-        fi
-        printf '%s\n' "${name}"
-    done
-    shopt -u nullglob
+  local unit name
+  shopt -s nullglob
+  for unit in "${QUADLET_SRC_DIR}"/*.network; do
+    name="$(quadlet_unit_value "${unit}" NetworkName)"
+    if [[ -n "${name}" ]]; then
+      name="$(resolve_unit_specifiers "${name}" "${unit}")"
+    else
+      name="$(basename "${unit}" .network)"
+    fi
+    printf '%s\n' "${name}"
+  done
+  shopt -u nullglob
 }

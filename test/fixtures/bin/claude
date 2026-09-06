@@ -19,65 +19,59 @@ mkdir -p "${CLAUDE_STUB_STATE_DIR}"
 printf '%s\n' "$*" >>"${CLAUDE_STUB_LOG}"
 
 if [[ "${1:-}" != "mcp" ]]; then
-    echo "claude stub: unsupported command: $*" >&2
-    exit 1
+  echo "claude stub: unsupported command: $*" >&2
+  exit 1
 fi
 subcommand="${2:-}"
 shift 2 || true
 
 case "${subcommand}" in
-    add)
-        name=""
-        scope="local"
-        while [[ $# -gt 0 ]]; do
-            case "$1" in
-                --transport | -t | --client-id | --callback-port)
-                    shift 2
-                    ;;
-                --scope | -s)
-                    scope="$2"
-                    shift 2
-                    ;;
-                -e | --env | -H | --header)
-                    shift 2
-                    ;;
-                --)
-                    shift
-                    ;;
-                *)
-                    if [[ -z "${name}" ]]; then
-                        name="$1"
-                    fi
-                    shift
-                    ;;
-            esac
-        done
+  add)
+    name=""
+    scope="local"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --transport | -t | --client-id | --callback-port) shift 2 ;;
+        --scope | -s)
+          scope="$2"
+          shift 2
+          ;;
+        -e | --env | -H | --header) shift 2 ;;
+        --) shift ;;
+        *)
+          if [[ -z "${name}" ]]; then
+            name="$1"
+          fi
+          shift
+          ;;
+      esac
+    done
 
-        state_file="${CLAUDE_STUB_STATE_DIR}/${name}"
-        if [[ -e "${state_file}" ]]; then
-            echo "MCP server ${name} already exists in ${scope} config" >&2
-            exit 1
-        fi
-        echo "${scope}" >"${state_file}"
-        echo "Added MCP server ${name}"
-        ;;
-    get)
-        name="$1"
-        if [[ ! -e "${CLAUDE_STUB_STATE_DIR}/${name}" ]]; then
-            echo "No MCP server found with name: ${name}" >&2
-            exit 1
-        fi
-        ;;
-    remove)
-        name="$1"
-        if [[ ! -e "${CLAUDE_STUB_STATE_DIR}/${name}" ]]; then
-            echo "No MCP server found with name: ${name}" >&2
-            exit 1
-        fi
-        rm -f "${CLAUDE_STUB_STATE_DIR}/${name}"
-        ;;
-    *)
-        echo "claude stub: unsupported mcp subcommand: ${subcommand}" >&2
-        exit 1
-        ;;
+    state_file="${CLAUDE_STUB_STATE_DIR}/${name}"
+    if [[ -e "${state_file}" ]]; then
+      echo "MCP server ${name} already exists in ${scope} config" >&2
+      exit 1
+    fi
+    echo "${scope}" >"${state_file}"
+    echo "Added MCP server ${name}"
+    ;;
+  get)
+    name="$1"
+    if [[ ! -e "${CLAUDE_STUB_STATE_DIR}/${name}" ]]; then
+      echo "No MCP server found with name: ${name}" >&2
+      exit 1
+    fi
+    ;;
+  remove)
+    name="$1"
+    if [[ ! -e "${CLAUDE_STUB_STATE_DIR}/${name}" ]]; then
+      echo "No MCP server found with name: ${name}" >&2
+      exit 1
+    fi
+    rm -f "${CLAUDE_STUB_STATE_DIR}/${name}"
+    ;;
+  *)
+    echo "claude stub: unsupported mcp subcommand: ${subcommand}" >&2
+    exit 1
+    ;;
 esac

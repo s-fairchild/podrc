@@ -15,39 +15,50 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 # shellcheck source=./common.sh
 source "${SCRIPT_DIR}/common.sh"
 
-# install_environment_d_templates environment_d_dir
-#
+#######################################
 # Copies each env/environment.d/*.example template into environment_d_dir,
 # stripping the .example suffix, skipping any destination that already
 # exists so a reinstall never clobbers a hand-edited value. Mirrors
 # install.sh's install_env_templates().
+# Arguments:
+#   environment_d_dir: destination directory
+# Globals:
+#   ENVIRONMENT_D_EXAMPLE_DIR
+# Outputs:
+#   Writes status to the log.
+#######################################
 install_environment_d_templates() {
-    local environment_d_dir="$1"
+  local environment_d_dir="$1"
 
-    log_info "installing session-env templates to ${environment_d_dir}"
-    mkdir -p "${environment_d_dir}"
+  log_info "installing session-env templates to ${environment_d_dir}"
+  mkdir -p "${environment_d_dir}"
 
-    local example dest
-    for example in "${ENVIRONMENT_D_EXAMPLE_DIR}"/*.example; do
-        dest="${environment_d_dir}/$(basename "${example}" .example)"
-        if [[ -e "${dest}" ]]; then
-            log_info "skip ${dest} (already exists)"
-        else
-            install -m 0644 "${example}" "${dest}"
-            log_info "wrote ${dest} (edit and uncomment before it takes effect)"
-        fi
-    done
+  local example dest
+  for example in "${ENVIRONMENT_D_EXAMPLE_DIR}"/*.example; do
+    dest="${environment_d_dir}/$(basename "${example}" .example)"
+    if [[ -e "${dest}" ]]; then
+      log_info "skip ${dest} (already exists)"
+    else
+      install -m 0644 "${example}" "${dest}"
+      log_info "wrote ${dest} (edit and uncomment before it takes effect)"
+    fi
+  done
 }
 
-# print_next_steps environment_d_dir
-#
+#######################################
 # Printed directly rather than through the logger, same rationale as
 # install.sh's print_next_steps -- meant to be read as-is, not as a
 # timestamped log line.
+# Arguments:
+#   environment_d_dir: installed environment.d dir, for the printed
+#     instructions
+# Outputs:
+#   Writes the "Next steps" block to stdout.
+#######################################
 print_next_steps() {
-    local environment_d_dir="$1"
+  local environment_d_dir="$1"
 
-    cat <<EOF
+  cat <<EOF
 
 Next steps:
   1. Edit ${environment_d_dir}/mcpod.conf and uncomment XDG_CONFIG_HOME if
@@ -58,13 +69,13 @@ EOF
 }
 
 main() {
-    init_logging
+  init_logging
 
-    local environment_d_dir
-    environment_d_dir="$(install_environment_d_dir)"
+  local environment_d_dir
+  environment_d_dir="$(install_environment_d_dir)"
 
-    install_environment_d_templates "${environment_d_dir}"
-    print_next_steps "${environment_d_dir}"
+  install_environment_d_templates "${environment_d_dir}"
+  print_next_steps "${environment_d_dir}"
 }
 
 main "$@"

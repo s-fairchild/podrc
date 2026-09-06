@@ -251,9 +251,9 @@ and why `mcp-github.container` was removed rather than kept
   (https://google.github.io/styleguide/shellguide.html) -- the Makefile
   itself still requires literal tabs for recipe lines, but that's a `make`
   syntax requirement, not a `hack/*.sh`/`home/bin/*` convention.
-  Indentation is 4 spaces in `hack/*.sh`, but still 2 spaces (Google's own
-  guideline) in `home/bin/*`/`home/lib/*.sh` -- match whichever tree
-  you're editing.
+  Indentation is 2 spaces everywhere (Google's own guideline) --
+  `hack/*.sh`, `home/bin/*`, `home/lib/mcpod/*.sh`, and `test/` all follow
+  the same convention; there's no more per-directory split.
 - Every directly-run script in `hack/` puts its logic in functions and
   calls a `main "$@"` at the bottom; `hack/common.sh` is a library (only
   sourced) and has no `main`. `home/bin/*` scripts follow the same
