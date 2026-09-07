@@ -15,7 +15,7 @@ teardown() {
 
   [[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.container" ]]
   [[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]]
-  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/mcp.network" ]]
+  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/k3d.network" ]]
   [[ -f "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.image" ]]
   [[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.image" ]]
 }

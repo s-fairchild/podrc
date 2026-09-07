@@ -20,7 +20,9 @@
 
 log_level = 6
 port = "8081"
+metrics_port = "9090"  # Separate port for metrics/stats (e.g. for network policy isolation)
 bind_address = "0.0.0.0"
+list_output = "yaml"
 stateless = true
 
 ####################

@@ -23,24 +23,26 @@
 
 [Unit]
 Description=Kubernetes MCP Server
-After=network-online.target mcp-network.service
-Requires=mcp-network.service
+After=network-online.target k3d-network.service
+Requires=k3d-network.service
 Wants=network-online.target
 
 [Service]
 EnvironmentFile=%h/.config/podrc/kubernetes-mcp-systemd.env
-ExecStartPre=/bin/sh -c '[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
+ExecStartPre=/bin/sh -c '[[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ]] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
 
 [Container]
 Image=kubernetes-mcp-server.image
 ContainerName=%N
-Network=mcp.network
+Network=k3d.network
 PublishPort=127.0.0.1:8081:8081
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
 Volume=%h/.config/podrc/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z,U
 EnvironmentFile=%h/.config/podrc/kubernetes-mcp.env
 Exec=--config /etc/kubernetes-mcp-server/config.toml
+# https://github.com/containers/kubernetes-mcp-server/blob/main/docs/configuration.md#dynamic-configuration-reload
+ReloadSignal=SIGHUP
 AutoUpdate=registry
 HealthCmd=CMD-SHELL curl -sf http://localhost:8081/healthz || exit 1
 HealthInterval=30s

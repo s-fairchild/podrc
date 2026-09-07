@@ -12,7 +12,7 @@ set -euo pipefail
 #                     instead of home/config/containers/systemd
 #   QUADLET_UNIT_SUFFIXES - quadlet unit file extensions this repo installs/
 #                     removes/inspects, e.g. kubernetes-mcp.container or
-#                     mcp.network
+#                     k3d.network
 #   ENV_EXAMPLE_DIR - env/config-file templates (*.example) copied by
 #                     install.sh, recursively and preserving relative
 #                     directory structure, e.g. kubernetes-mcp.env.example
@@ -260,7 +260,7 @@ container_service_names() {
 
 #######################################
 # Prints the systemd service name Quadlet generates for each *.network
-# unit in QUADLET_SRC_DIR (mcp.network -> mcp-network.service), one per
+# unit in QUADLET_SRC_DIR (k3d.network -> k3d-network.service), one per
 # line. uninstall.sh stops these directly (rather than calling `podman
 # network rm`) so that NetworkDeleteOnStop=true on the unit handles
 # actually removing the podman network.

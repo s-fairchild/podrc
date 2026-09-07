@@ -20,7 +20,7 @@ podrc/
 │   ├── config/
 │   │   └── containers/
 │   │       └── systemd/            -> ~/.config/containers/systemd/
-│   │           ├── mcp.network                    shared podman network
+│   │           ├── k3d.network                    shared podman network
 │   │           ├── github-mcp-server.image        GitHub MCP server image pull
 │   │           ├── kubernetes-mcp-server.image    Kubernetes MCP server image pull
 │   │           └── kubernetes-mcp-server.container  Kubernetes MCP server
