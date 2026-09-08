@@ -23,9 +23,7 @@
 
 [Unit]
 Description=Kubernetes MCP Server
-After=network-online.target k3d-network.service
-Requires=k3d-network.service
-Wants=network-online.target
+After=network-online.target
 
 [Service]
 EnvironmentFile=%h/.config/podrc/kubernetes-mcp-systemd.env
@@ -35,7 +33,12 @@ ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} |
 [Container]
 Image=kubernetes-mcp-server.image
 ContainerName=%N
-Network=k3d.network
+Label=app.kubernetes.io/name=kubernetes-mcp-server
+Label=app.kubernetes.io/component=mcp-server
+Label=app.kubernetes.io/part-of=podrc
+Label=app.kubernetes.io/managed-by=quadlet
+Label=org.opencontainers.image.source=https://github.com/s-fairchild/podrc
+Network=mcp.network
 PublishPort=127.0.0.1:8081:8081
 Secret=${KUBECONFIG_PODMAN_SECRET_NAME},type=mount,uid=65532,gid=65532,mode=0400
 Volume=%h/.config/podrc/etc/kubernetes-mcp-server:/etc/kubernetes-mcp-server:ro,Z,U

@@ -9,13 +9,10 @@
 [Unit]
 Description=Shared network for MCP servers
 
-[Service]
-EnvironmentFile=-%h/.config/podrc/%N-systemd.env
-EnvironmentFile=%h/.config/podrc/mcp-podman-global-systemd.env
-
+# TODO try and set dns server to rootful k3d dns server value
 [Network]
-NetworkName=k3d
-InterfaceName=k3d0
+NetworkName=mcp
+InterfaceName=mcp0
 IPAMDriver=host-local
 Subnet=10.81.0.0/28
 IPRange=10.81.0.0/28
@@ -23,6 +20,7 @@ Gateway=10.81.0.1
 DNS=10.81.0.1
 IPv6=false
 NetworkDeleteOnStop=true
-Label=claude
-Label=claude-code
-Label=mcp-servers
+Label=app.kubernetes.io/name=mcp-network
+Label=app.kubernetes.io/part-of=podrc
+Label=app.kubernetes.io/managed-by=quadlet
+Label=org.opencontainers.image.source=https://github.com/s-fairchild/podrc
