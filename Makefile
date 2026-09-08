@@ -11,7 +11,7 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 .PHONY: lint
-lint: submodules ## Validate quadlet syntax (dry-run) and shellcheck the scripts
+lint: submodules ## Validate quadlet syntax (dry-run + systemd-analyze verify) and shellcheck the scripts
 	@hack/lint.sh
 
 .PHONY: generate

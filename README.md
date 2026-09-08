@@ -92,6 +92,8 @@ name/suffix.
 - systemd user instance (`systemctl --user`) — normal on any modern
   systemd desktop/server distro
 - `shellcheck` (optional but used by `make lint`)
+- `systemd-analyze` (optional but used by `make lint`; ships with systemd
+  itself, so normal on any modern systemd desktop/server distro)
 - `kcov` (optional but used by `make coverage`; Fedora: `dnf install kcov`)
 - `git` with submodule support, for the vendored test suite
 
@@ -105,8 +107,9 @@ git submodule update --init --recursive   # or: make submodules
 
 ```bash
 make lint       # dry-run every quadlet unit through the local `quadlet`
-                # binary (no real systemd paths touched) + shellcheck
-                # hack/*.sh, home/bin/*, home/lib/*
+                # binary (no real systemd paths touched), verify the
+                # resulting units with `systemd-analyze verify`, +
+                # shellcheck hack/*.sh, home/bin/*, home/lib/*
 make generate   # materialize the systemd units quadlet would produce into
                 # .generated/, so you can eyeball the resulting ExecStart
 make install    # lint, then copy units to ~/.config/containers/systemd,

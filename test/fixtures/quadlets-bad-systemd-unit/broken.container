@@ -1,0 +1,5 @@
+[Container]
+Image=docker.io/library/busybox:latest
+
+[Service]
+ExecStartPre=/no/such/binary-xyz

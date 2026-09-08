@@ -8,11 +8,46 @@ setup() {
   run "${REPO_ROOT}/hack/lint.sh"
   assert_success
   assert_output --partial "OK: all quadlet units parsed cleanly"
+  assert_output --partial "OK: systemd accepts all generated units"
 }
 
 @test "lint: fails on a quadlet unit with an unsupported key" {
   QUADLET_SRC_DIR="${FIXTURES_DIR}/bad-quadlets" run "${REPO_ROOT}/hack/lint.sh"
   assert_failure
+}
+
+@test "lint: fails when systemd-analyze rejects a unit quadlet itself accepted" {
+  # broken.container's [Service] passes ExecStartPre= straight through --
+  # quadlet doesn't validate raw passthrough sections, so its own dry-run
+  # accepts this unit; only systemd-analyze verify catches the nonexistent
+  # binary.
+  QUADLET_SRC_DIR="${FIXTURES_DIR}/quadlets-bad-systemd-unit" \
+    run "${REPO_ROOT}/hack/lint.sh"
+  assert_failure
+  assert_output --partial "OK: all quadlet units parsed cleanly"
+  assert_output --partial "is not executable"
+  assert_output --partial "systemd-analyze reported errors verifying generated units"
+}
+
+@test "lint: warns and skips systemd-analyze verification when it isn't installed" {
+  # Same rationale/technique as the shellcheck-skip test below: mirror
+  # /usr/bin into a sandbox dir, symlinking everything except
+  # systemd-analyze, since a real one is normally present system-wide.
+  sandbox_dir="$(mktemp -d)"
+  no_systemd_analyze_bin="${sandbox_dir}/no-systemd-analyze-bin"
+  mkdir -p "${no_systemd_analyze_bin}"
+  for f in /usr/bin/*; do
+    [[ -x "${f}" ]] || continue
+    name="$(basename "${f}")"
+    [[ "${name}" == "systemd-analyze" ]] && continue
+    ln -sf "${f}" "${no_systemd_analyze_bin}/${name}"
+  done
+
+  PATH="${no_systemd_analyze_bin}" run "${REPO_ROOT}/hack/lint.sh"
+  assert_success
+  assert_output --partial "systemd-analyze not installed; skipping unit verification."
+
+  rm -rf "${sandbox_dir}"
 }
 
 @test "make lint: passes via the Makefile target" {
