@@ -30,6 +30,8 @@ EnvironmentFile=%h/.config/podrc/kubernetes-mcp-systemd.env
 ExecStartPre=/bin/sh -c '[[ -n "${KUBECONFIG_PODMAN_SECRET_NAME}" ]] || { echo "KUBECONFIG_PODMAN_SECRET_NAME is not set" >&2; exit 1; }'
 ExecStartPre=/bin/sh -c 'podman secret exists ${KUBECONFIG_PODMAN_SECRET_NAME} || { echo "podman secret ${KUBECONFIG_PODMAN_SECRET_NAME} does not exist." >&2; exit 1; }'
 
+# TODO add script or readme instructions for editing and creating kubeconfig secret
+# cat ~/.kube/config | sed 's/localhost:6550/k3d-kubevirt-staging-serverlb:6443/g' | podman secret create --replace kubernetes-mcp-kubeconfig -
 [Container]
 Image=kubernetes-mcp-server.image
 ContainerName=%N

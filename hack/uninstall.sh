@@ -50,7 +50,11 @@ purge_podman_resources() {
   mapfile -t containers < <(quadlet_container_names)
   if (( ${#containers[@]} > 0 )); then
     log_info "--purge: removing podman containers: ${containers[*]}"
-    podman rm --force "${containers[@]}" >/dev/null 2>&1 || true
+    podman rm \
+      --force \
+      "${containers[@]}" \
+      >/dev/null 2>&1 \
+    || true
   fi
 }
 
@@ -74,7 +78,11 @@ stop_network_units() {
   fi
 
   log_info "--purge: stopping network units (deletes the podman network): ${services[*]}"
-  systemctl --user stop "${services[@]}" 2>/dev/null || true
+  systemctl --user \
+    stop \
+    "${services[@]}" \
+    2>/dev/null \
+  || true
 }
 
 #######################################
@@ -94,7 +102,7 @@ purge_env() {
 main() {
   init_logging
 
-  local purge=0
+  local -i purge=0
   if [[ "${1:-}" == "--purge" ]]; then
     purge=1
   fi
