@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Fake podman for install.bats/uninstall.bats: implements only the
+# `quadlet install`/`quadlet rm` subset install.sh/uninstall.sh use,
+# copying/removing unit files under the resolved quadlet dir instead of
+# shelling out to the real podman quadlet installer -- which needs a
+# working container storage backend that a sandboxed HOME on a non-btrfs
+# tmp filesystem can't provide. Mirrors real `podman quadlet install`/
+# `rm`'s own default of reloading systemd after the change (see
+# --reload-systemd in `podman quadlet install --help` / `rm --help`),
+# which reaches the sandboxed systemctl stub via PATH. Logs every
+# invocation to PODMAN_STUB_LOG.
+
+set -euo pipefail
+
+: "${PODMAN_STUB_LOG:?PODMAN_STUB_LOG must be set}"
+printf '%s\n' "$*" >>"${PODMAN_STUB_LOG}"
+
+if [[ "${1:-}" != "quadlet" ]]; then
+  echo "podman stub: unsupported command: $*" >&2
+  exit 1
+fi
+
+quadlet_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/containers/systemd"
+subcommand="${2:-}"
+shift 2 || true
+
+case "${subcommand}" in
+  install)
+    unit=""
+    for arg in "$@"; do
+      case "${arg}" in
+        --replace | -r) ;;
+        *) unit="${arg}" ;;
+      esac
+    done
+    mkdir -p "${quadlet_dir}"
+    install -m 0644 "${unit}" "${quadlet_dir}/$(basename "${unit}")"
+    systemctl --user daemon-reload
+    ;;
+  rm)
+    name=""
+    for arg in "$@"; do
+      case "${arg}" in
+        --force | -f) ;;
+        *) name="${arg}" ;;
+      esac
+    done
+    rm -f "${quadlet_dir}/${name}"
+    systemctl --user daemon-reload
+    ;;
+  *)
+    echo "podman stub: unsupported quadlet subcommand: ${subcommand}" >&2
+    exit 1
+    ;;
+esac

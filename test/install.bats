@@ -13,11 +13,15 @@ teardown() {
   run "${REPO_ROOT}/hack/install.sh"
   assert_success
 
-  [[ ! -e "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.container" ]]
-  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.container" ]]
-  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/k3d.network" ]]
-  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/github-mcp-server.image" ]]
-  [[ -f "${XDG_CONFIG_HOME}/containers/systemd/kubernetes-mcp-server.image" ]]
+  local systemd_dir="${XDG_CONFIG_HOME}/containers/systemd"
+  [[ ! -e "${systemd_dir}/github-mcp-server.container" ]]
+  [[ -f "${systemd_dir}/github-mcp-server.image" ]]
+  [[ -f "${systemd_dir}/kubernetes-mcp-server.image" ]]
+  [[ -f "${systemd_dir}/netshoot.image" ]]
+  [[ -f "${systemd_dir}/ubi-minimal.image" ]]
+  [[ -f "${systemd_dir}/ubi.image" ]]
+  [[ -f "${systemd_dir}/mcp.network" ]]
+  [[ -f "${systemd_dir}/kubernetes-mcp-server.container" ]]
 }
 
 @test "install: writes env templates without pre-existing secrets" {

@@ -12,16 +12,20 @@ REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
 FIXTURES_DIR="${BATS_TEST_DIRNAME}/fixtures"
 
 #######################################
-# Sandboxes HOME/XDG dirs plus a stubbed `systemctl`/`claude` on PATH, so
-# install/uninstall tests never touch the real user systemd manager, the
-# real ~/.config, or the real `claude mcp` config. Call from setup();
-# pairs with teardown_sandbox.
+# Sandboxes HOME/XDG dirs plus a stubbed `systemctl`/`claude`/`podman`/
+# `loginctl` on PATH, so install/uninstall tests never touch the real
+# user systemd manager, the real ~/.config, the real `claude mcp`
+# config, the real podman quadlet installer (which needs a working
+# container storage backend), or the real user's systemd-logind linger
+# setting. Call from setup(); pairs with teardown_sandbox.
 # Globals:
 #   FIXTURES_DIR
 #   SANDBOX_DIR (set by this function)
 #   SYSTEMCTL_STUB_LOG (set by this function)
 #   CLAUDE_STUB_LOG (set by this function)
 #   CLAUDE_STUB_STATE_DIR (set by this function)
+#   PODMAN_STUB_LOG (set by this function)
+#   LOGINCTL_STUB_LOG (set by this function)
 #######################################
 setup_sandbox() {
   SANDBOX_DIR="$(mktemp -d)"
@@ -40,6 +44,14 @@ setup_sandbox() {
   CLAUDE_STUB_STATE_DIR="${SANDBOX_DIR}/claude-mcp-state"
   export CLAUDE_STUB_STATE_DIR
   mkdir -p "${CLAUDE_STUB_STATE_DIR}"
+
+  PODMAN_STUB_LOG="${SANDBOX_DIR}/podman.log"
+  export PODMAN_STUB_LOG
+  : >"${PODMAN_STUB_LOG}"
+
+  LOGINCTL_STUB_LOG="${SANDBOX_DIR}/loginctl.log"
+  export LOGINCTL_STUB_LOG
+  : >"${LOGINCTL_STUB_LOG}"
 
   export PATH="${FIXTURES_DIR}/bin:${PATH}"
 }

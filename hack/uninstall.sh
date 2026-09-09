@@ -12,31 +12,6 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 #######################################
-# Disables and stops every mcp-*.service Quadlet generates from this
-# repo's *.container units, ignoring errors if not installed.
-# Globals:
-#   QUADLET_SRC_DIR
-# Outputs:
-#   Writes status to the log.
-#######################################
-stop_units() {
-  local -a services=()
-  mapfile -t services < <(container_service_names)
-
-  if (( ${#services[@]} == 0 )); then
-    log_warn "no *.container units found in ${QUADLET_SRC_DIR}; nothing to stop"
-    return 0
-  fi
-
-  log_info "stopping and disabling units (ignoring errors if not installed)"
-  systemctl --user \
-    disable \
-    --now \
-    "${services[@]}" \
-    2>/dev/null || true
-}
-
-#######################################
 # Removes every installed quadlet unit file (mirrors install.sh's
 # install_units) from config_dir.
 # Arguments:
@@ -54,7 +29,10 @@ remove_units() {
 
   local unit
   for unit in "${units[@]}"; do
-    rm -f "${config_dir}/$(basename "${unit}")"
+    podman quadlet \
+      rm \
+      --force \
+      "$(basename "$unit")"
   done
 }
 
@@ -126,7 +104,6 @@ main() {
   local env_dir
   env_dir="$(install_env_dir)"
 
-  stop_units
   remove_units "${config_dir}"
 
   if (( purge )); then
@@ -135,8 +112,7 @@ main() {
     purge_env "${env_dir}"
   fi
 
-  log_info "systemctl --user daemon-reload"
-  systemctl --user daemon-reload
+  log_info "Done."
 }
 
 main "$@"

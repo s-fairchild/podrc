@@ -18,11 +18,11 @@ teardown() {
   [[ -f "${XDG_CONFIG_HOME}/podrc/github-mcp-server.env" ]]
 }
 
-@test "uninstall: disables units through systemctl --user" {
+@test "uninstall: removes each quadlet unit via podman quadlet rm --force" {
   run "${REPO_ROOT}/hack/uninstall.sh"
   assert_success
 
-  run grep -q -- "--user disable --now kubernetes-mcp-server.service" "${SYSTEMCTL_STUB_LOG}"
+  run grep -q -- "quadlet rm --force kubernetes-mcp-server.container" "${PODMAN_STUB_LOG}"
   assert_success
 }
 
@@ -33,10 +33,12 @@ teardown() {
   [[ ! -e "${XDG_CONFIG_HOME}/podrc" ]]
 }
 
-@test "uninstall: warns and skips stopping units when QUADLET_SRC_DIR has no *.container units" {
+@test "uninstall: succeeds without removing anything when QUADLET_SRC_DIR has no quadlet units" {
   QUADLET_SRC_DIR="${FIXTURES_DIR}/empty-quadlets" run "${REPO_ROOT}/hack/uninstall.sh"
   assert_success
-  assert_output --partial "no *.container units found in ${FIXTURES_DIR}/empty-quadlets; nothing to stop"
+
+  run grep -q -- "quadlet rm" "${PODMAN_STUB_LOG}"
+  assert_failure
 }
 
 @test "uninstall --purge: skips stopping network units when QUADLET_SRC_DIR has no *.network units" {

@@ -35,7 +35,16 @@ install_units() {
     return 0
   fi
 
-  install -m 0644 "${units[@]}" "${config_dir}/"
+  for unit in "${units[@]}"; do
+    log_info "Installing podman quadlet unit ${unit}"
+    podman quadlet \
+      install \
+      --replace \
+      "$unit"
+  done
+
+  log_info "enabling linger to allow running user services to persist after logouts/reboots"
+  loginctl enable-linger "$USER"
 }
 
 #######################################
@@ -77,25 +86,6 @@ install_env_templates() {
 }
 
 #######################################
-# Reloads the user systemd manager so it picks up the installed quadlet
-# units. Quadlet's systemd generator honors each unit's own [Install]
-# WantedBy= at generation time (visible under
-# $XDG_RUNTIME_DIR/systemd/generator/default.target.wants/ after this
-# runs), so the services are already enabled once daemon-reload
-# completes -- do not `systemctl --user enable` them: enable requires a
-# persistent unit file to symlink to, but these are generator-owned, so
-# it fails with "Unit ... is transient or generated".
-# Outputs:
-#   Writes status to the log.
-#######################################
-register_units() {
-  local -r systemctl_reload_cmd="systemctl --user daemon-reload"
-
-  log_info "${systemctl_reload_cmd}"
-  ${systemctl_reload_cmd}
-}
-
-#######################################
 # Human-readable follow-up instructions, printed directly rather than
 # through the logger since they're meant to be read as-is, not as a
 # timestamped log line.
@@ -117,14 +107,7 @@ Next steps:
   1. Edit ${env_dir}/*.env with real credentials, and
      ${env_dir}/etc/kubernetes-mcp-server/{config.toml,conf.d/*.toml} if
      you need --config-driven settings.
-  2. Resolve the TODO(verify) notes in ${config_dir}/kubernetes-mcp.container
-     (transport flags, kubernetes image).
-  3. systemctl --user start ${services[*]}
-  4. So these keep running after you log out, and start again on boot:
-     loginctl enable-linger "\$USER"
-  5. Run 'make install-local' to install home/bin/*, home/lib/* to
-     ~/.local/bin, ~/.local/lib/podrc -- separate from this target
-     since those aren't systemd-managed.
+  2. systemctl --user start ${services[*]}
 EOF
 }
 
@@ -140,7 +123,6 @@ main() {
 
   install_units "${config_dir}"
   install_env_templates "${env_dir}"
-  register_units
   print_next_steps "${env_dir}" "${config_dir}"
 }
 

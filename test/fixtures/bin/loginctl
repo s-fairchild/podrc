@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Fake loginctl for install.bats: records the `enable-linger` invocation
+# instead of flipping the real user's actual systemd-logind linger
+# setting on every test run. Point LOGINCTL_STUB_LOG at a file before
+# putting this directory ahead of the real loginctl on PATH.
+
+set -euo pipefail
+
+: "${LOGINCTL_STUB_LOG:?LOGINCTL_STUB_LOG must be set}"
+printf '%s\n' "$*" >>"${LOGINCTL_STUB_LOG}"
+exit 0
